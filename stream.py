@@ -10,6 +10,10 @@ class Stream:
         else:
             self.outlet_connection = None
 
+    def __del__(self):
+        self.remove_inlet_connection()
+        self.remove_outlet_connection
+
     def add_inlet_connection(self, connection):
         self.inlet_connection = connection
         connection.stream = self
@@ -17,3 +21,11 @@ class Stream:
     def add_outlet_connection(self, connection):
         self.outlet_connection = connection
         connection.stream = self
+
+    def remove_inlet_connection(self):
+        self.inlet_connection.stream = None
+        self.inlet_connection = None
+    
+    def remove_outlet_connection(self):
+        self.outlet_connection.stream = None
+        self.outlet_connection = None
