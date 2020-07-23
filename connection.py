@@ -1,5 +1,6 @@
 from event_queue import EventQueue
 
+
 class Connection:
     def __init__(self, module=None, capacity=100, name='Connection'):
         self.module = module
@@ -10,11 +11,11 @@ class Connection:
 
     def push(self):
         pushed_amount = 0
-        while not self.queue.empty() and pushed_amount + self.queue.peek().magnitude <= self.capacity: # TODO is self.capacity here correct?
+        while not self.queue.empty() and pushed_amount + self.queue.peek().magnitude <= self.capacity:  # TODO is self.capacity here correct?
             event = self.queue.dequeue()
             self.stream.outlet_connection.queue.enqueue(event)
             pushed_amount += event.magnitude
-        print(f'{self.name} flowrate: {pushed_amount}, accumulated backflow: {self.queue.amount_queued}')
+        print(f'{self.module.name} {self.name} to {self.stream.outlet_connection.module.name} {self.stream.outlet_connection.name} flowrate: {pushed_amount}, accumulated backflow: {self.queue.amount_queued}')
 
     def transfer_to_module(self, amount=0):
         if amount == 0:
@@ -35,7 +36,6 @@ class Connection:
             self.queue.enqueue(event)
             transferred_amount += event.magnitude
         return transferred_amount
-    
 
     @property
     def backflow(self):

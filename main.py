@@ -7,15 +7,14 @@ from stream import Stream
 
 def loop(modules):
     for module in modules:
-        print(module.__class__.__name__)
         module.process()
 
 
 if __name__ == '__main__':
-    source = Source(500)
-    sink1 = Sink()
-    sink2 = Sink()
-    splitter = Splitter()
+    source1 = Source('Source1', 500)
+    sink1 = Sink('Sink1')
+    sink2 = Sink('Sink2')
+    splitter1 = Splitter('Splitter1')
     Stream(source.outlet_connections[0], splitter.inlet_connections[0])
     Stream(splitter.outlet_connections[0], sink1.inlet_connections[0])
     Stream(splitter.outlet_connections[1], sink2.inlet_connections[0])
