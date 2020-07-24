@@ -1,3 +1,5 @@
+Refactor Module capacities
+Refactor Module event transfers to methods
 Pull flow
 Tests
 Support arbitrary number of components: water, fiber, filler, etc.

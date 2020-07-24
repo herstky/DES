@@ -1,8 +1,8 @@
-from event_queue import EventQueue
-from connection import Connection
-from event import Event
-from stream import Stream
-
+from .event_queue import EventQueue
+from .connection import Connection
+from .event import Event
+from .stream import Stream
+from .components import Water, Fiber
 
 class Module:
     def __init__(self, name='Module'):
@@ -22,19 +22,30 @@ class Module:
 
 
 class Source(Module):
-    def __init__(self, name='Source', outlet_capacity=1000, event_rate=1000):
+    def __init__(self, name='Source', outlet_capacity=1000, volumetric_fractions=None, event_rate=100):
         super().__init__(name)
-        self.event_rate = event_rate
         self.add_outlet_connection(Connection(self, outlet_capacity, 'Outlet'))
+        self.volumetric_fractions = volumetric_fractions
+        self.event_rate = event_rate
 
     def process(self):
         connection, *_ = self.outlet_connections
         generated_amount = 0
         for i in range(self.event_rate):
-            magnitude = connection.capacity / self.event_rate
+            volume = connection.capacity / self.event_rate
+            components = []
+            if self.volumetric_fractions:
+                for component in Event.registered_components:
+                    fraction = self.volumetric_fractions[component.name]
+                    components.append(Component(fraction * volume))
+            else:
+                for component in Event.registered_components:
+                    fraction = 1 / len(Event.registered_components)
+                    components.append(component(fraction * volume))
+            
             # Create events at outlet connection
-            connection.queue.enqueue(Event(magnitude))
-            generated_amount += magnitude
+            connection.queue.enqueue(Event(components))
+            generated_amount += volume
 
         print(f'{self.name} generated {generated_amount}')
 
@@ -67,8 +78,10 @@ class Splitter(Module):
         inlet_connection, *_ = self.inlet_connections
         outlet_connection1, outlet_connection2, *_ = self.outlet_connections
 
-        # Move events from inlet connection to the outlet connections
+        # Transfer events to Splitter for processing
         inlet_amount = inlet_connection.transfer_to_module()
+
+        # Transfer events to outlet streams
         split_amount1 = outlet_connection1.transfer_from_module(self.queue.amount_queued * self.split_fraction)
         split_amount2 = outlet_connection2.transfer_from_module(self.queue.amount_queued)
 
@@ -90,9 +103,11 @@ class Joiner(Module):
         inlet_connection1, inlet_connection2, *_ = self.inlet_connections
         outlet_connection1, *_ = self.outlet_connections
 
-        # Transfer events from the inlet connections to the outlet connection
+        # Transfer events to Splitter for processing        
         inlet_amount1 = inlet_connection1.transfer_to_module()
         inlet_amount2 = inlet_connection2.transfer_to_module()
+
+        # Transfer events to outlet streams
         joined_amount = outlet_connection1.transfer_from_module()
 
         print(f'{self.name} joined streams of {inlet_amount1} and {inlet_amount2} into stream of {joined_amount}')
