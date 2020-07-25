@@ -22,7 +22,7 @@ class Module:
 
 
 class Source(Module):
-    def __init__(self, name='Source', outlet_capacity=1000, volumetric_fractions=None, event_rate=100):
+    def __init__(self, name='Source', outlet_capacity=1000, volumetric_fractions=None, event_rate=1000):
         super().__init__(name)
         self.add_outlet_connection(Connection(self, outlet_capacity, 'Outlet'))
         self.volumetric_fractions = volumetric_fractions
