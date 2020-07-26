@@ -1,11 +1,19 @@
+from enum import Enum
+
 from PyQt5.QtWidgets import QAction, QPushButton, QLabel, QWidget, QGraphicsScene, QMainWindow, QGraphicsItem
 from PyQt5.QtGui import QPixmap, QWindow, QPen
 from PyQt5.QtCore import QTimer, pyqtSlot, QEvent, Qt, QLineF, QPoint, QPointF, QRectF
 
 from src.simulation import Simulation
 from src.main_window import Ui_MainWindow
+from src.modules import Source, Sink, Stream
 
-
+class State(Enum):
+    RUNNING = 1
+    IDLE = 2
+    PLACING_MODULE = 3
+    PLACING_STREAM = 4
+    DRAWING_STREAM = 5
 
 class ApplicationWindow(QMainWindow):
     def __init__(self):
@@ -15,6 +23,7 @@ class ApplicationWindow(QMainWindow):
     def initUI(self):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+        self.state = State(State.IDLE)
         self.scene = QGraphicsScene(self)
         self.scene.setSceneRect(QRectF(0, 0, self.ui.graphicsView.width(), self.ui.graphicsView.height()))
         self.ui.graphicsView.setScene(self.scene)   
@@ -41,6 +50,7 @@ class ApplicationWindow(QMainWindow):
         self.mouse_y = 0
         self.placing_module = False
         self.floating_widget = None
+        self.floating_model = None
         self.placing_stream = False
         self.drawing_stream = False
         self.floating_line = None
@@ -55,7 +65,6 @@ class ApplicationWindow(QMainWindow):
                 p1 = self.floating_line.line().p1()
                 p2 = self.adjust_coords(QPoint(self.mouse_x, self.mouse_y))
                 self.floating_line.setLine(QLineF(p1, p2))
-                print(self.floating_line.line().p2())
         # print(f'({self.mouse_x}, {self.mouse_y})')
 
         return super(ApplicationWindow, self).eventFilter(source, event)
@@ -74,34 +83,33 @@ class ApplicationWindow(QMainWindow):
         elif self.placing_stream:
             self.place_stream()
 
-
     @pyqtSlot()
     def create_source(self):
-        self.create_module('assets/source.png')
+        self.add_module(Source())
 
     @pyqtSlot()
     def create_sink(self):
-        self.create_module('assets/sink.png')
+        self.add_module(Sink())
 
-    def create_module(self, path):
-        self.placing_module = True
+    def add_module(self, module):
         label = QLabel(self)
-        pixmap = QPixmap(path)
-        label.setPixmap(pixmap)
+        label.setPixmap(module.view.pixmap)
         label.setAlignment(Qt.AlignLeft | Qt.AlignBottom)
-        label.setGeometry(self.mouse_x, self.mouse_y, pixmap.width(), pixmap.height())
+        label.setGeometry(self.mouse_x, self.mouse_y, module.view.pixmap.width(), module.view.pixmap.height())
         label.show()
+        self.placing_module = True
         self.floating_widget = label
-        # print(f'self: {self}, x: {self.mouse_x}, y: {self.mouse_y}')
-        # print(f'({self.mouse_x}, {self.mouse_y}), width: {label.width()}, height: {label.height()}')
+        self.floating_model = module
 
     def place_module(self):
-        self.placing_module = False
         self.floating_widget.setParent(None)
-        pixmap_item = self.ui.graphicsView.scene().addPixmap(self.floating_widget.pixmap())
+        pixmap_item = self.floating_model.view.add_to_scene(self.scene)
+        # pixmap_item = self.scene().addPixmap(self.floating_widget.pixmap())
         pos = self.adjust_coords(QPoint(self.mouse_x, self.mouse_y))
         pixmap_item.setPos(pos)
+        self.placing_module = False
         self.floating_widget = None
+        self.floating_model = None
 
     @pyqtSlot()
     def create_stream(self):
@@ -109,6 +117,7 @@ class ApplicationWindow(QMainWindow):
             self.placing_module = False
             self.floating_widget.setParent(None)
             self.floating_widget = None
+            self.floating_model = None
         self.placing_stream = True
         label = QLabel(self)
         pixmap = QPixmap('assets/connection.png')
@@ -128,7 +137,6 @@ class ApplicationWindow(QMainWindow):
         pen = QPen()
         pen.setWidth(2)
         self.floating_line.setPen(pen)
-        # self.floating_line.setPos(pos)
 
         self.floating_widget = None
 

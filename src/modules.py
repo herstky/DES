@@ -3,7 +3,7 @@ from .connection import Connection
 from .event import Event
 from .stream import Stream
 from .components import Water, Fiber
-
+from .views import SourveView, SinkView
 
 
 class Module:
@@ -29,6 +29,7 @@ class Source(Module):
         self.add_outlet_connection(Connection(self, outlet_capacity, 'Outlet'))
         self.volumetric_fractions = volumetric_fractions
         self.event_rate = event_rate
+        self.view = SourveView(self)
 
     def process(self):
         connection, *_ = self.outlet_connections
@@ -59,6 +60,7 @@ class Sink(Module):
     def __init__(self, name='Sink', inlet_capacity=1000):
         super().__init__(name)
         self.add_inlet_connection(Connection(self, inlet_capacity, 'Inlet'))
+        self.view = SinkView(self)
 
     def process(self):
         connection, *_ = self.inlet_connections

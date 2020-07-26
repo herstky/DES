@@ -1,5 +1,5 @@
 from .event_queue import EventQueue
-
+from .views import ConnectionView
 
 class Connection:
     def __init__(self, module=None, capacity=100, name='Connection'):
@@ -8,6 +8,7 @@ class Connection:
         self.name = name
         self.queue = EventQueue()
         self.stream = None
+        self.view = ConnectionView(self)
 
     def push(self):
         pushed_amount = 0
