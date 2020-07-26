@@ -17,6 +17,9 @@
    <layout class="QGridLayout" name="gridLayout_2">
     <item row="0" column="0">
      <layout class="QGridLayout" name="gridLayout">
+      <property name="spacing">
+       <number>0</number>
+      </property>
       <item row="0" column="0">
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
@@ -58,6 +61,17 @@
     <property name="title">
      <string>Insert</string>
     </property>
+    <widget class="QMenu" name="menuBlock">
+     <property name="title">
+      <string>Block</string>
+     </property>
+     <addaction name="actionSource"/>
+     <addaction name="actionSink"/>
+     <addaction name="actionSplitter"/>
+     <addaction name="actionJoiner"/>
+    </widget>
+    <addaction name="menuBlock"/>
+    <addaction name="actionStream"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -111,6 +125,23 @@
    <addaction name="actionNext"/>
    <addaction name="actionStop"/>
   </widget>
+  <widget class="QToolBar" name="toolBar_3">
+   <property name="windowTitle">
+    <string>toolBar_3</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionStream"/>
+   <addaction name="actionSource"/>
+   <addaction name="actionSink"/>
+   <addaction name="actionSplitter"/>
+   <addaction name="actionJoiner"/>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
   <action name="actionNew">
    <property name="text">
     <string>New</string>
@@ -158,6 +189,31 @@
   <action name="action">
    <property name="text">
     <string>¯\(ツ)/¯</string>
+   </property>
+  </action>
+  <action name="actionSource">
+   <property name="text">
+    <string>Source</string>
+   </property>
+  </action>
+  <action name="actionSink">
+   <property name="text">
+    <string>Sink</string>
+   </property>
+  </action>
+  <action name="actionSplitter">
+   <property name="text">
+    <string>Splitter</string>
+   </property>
+  </action>
+  <action name="actionJoiner">
+   <property name="text">
+    <string>Joiner</string>
+   </property>
+  </action>
+  <action name="actionStream">
+   <property name="text">
+    <string>Stream</string>
    </property>
   </action>
  </widget>

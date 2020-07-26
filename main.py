@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets
 
-from src.application_window import ApplicationWindow
+from src.gui import ApplicationWindow
 
 
 

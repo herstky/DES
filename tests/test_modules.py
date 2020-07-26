@@ -8,6 +8,7 @@ from src.stream import Stream
 from src.components import Water
 
 
+
 class TestModule(unittest.TestCase):
     def setUp(self):
         self.module = Module('Module')
