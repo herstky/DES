@@ -17,6 +17,7 @@ class Ui_MainWindow(object):
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout_2 = QtWidgets.QGridLayout(self.centralwidget)
+        self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.gridLayout = QtWidgets.QGridLayout()
         self.gridLayout.setSpacing(0)
@@ -57,9 +58,6 @@ class Ui_MainWindow(object):
         self.toolBar_3 = QtWidgets.QToolBar(MainWindow)
         self.toolBar_3.setObjectName("toolBar_3")
         MainWindow.addToolBar(QtCore.Qt.TopToolBarArea, self.toolBar_3)
-        self.statusBar = QtWidgets.QStatusBar(MainWindow)
-        self.statusBar.setObjectName("statusBar")
-        MainWindow.setStatusBar(self.statusBar)
         self.actionNew = QtWidgets.QAction(MainWindow)
         self.actionNew.setObjectName("actionNew")
         self.actionOpen = QtWidgets.QAction(MainWindow)
@@ -86,6 +84,8 @@ class Ui_MainWindow(object):
         self.actionJoiner.setObjectName("actionJoiner")
         self.actionStream = QtWidgets.QAction(MainWindow)
         self.actionStream.setObjectName("actionStream")
+        self.actionReadout = QtWidgets.QAction(MainWindow)
+        self.actionReadout.setObjectName("actionReadout")
         self.menuFile.addAction(self.actionNew)
         self.menuFile.addAction(self.actionOpen)
         self.menuFile.addAction(self.actionSave)
@@ -115,6 +115,7 @@ class Ui_MainWindow(object):
         self.toolBar_3.addAction(self.actionSink)
         self.toolBar_3.addAction(self.actionSplitter)
         self.toolBar_3.addAction(self.actionJoiner)
+        self.toolBar_3.addAction(self.actionReadout)
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
@@ -148,6 +149,7 @@ class Ui_MainWindow(object):
         self.actionSplitter.setText(_translate("MainWindow", "Splitter"))
         self.actionJoiner.setText(_translate("MainWindow", "Joiner"))
         self.actionStream.setText(_translate("MainWindow", "Stream"))
+        self.actionReadout.setText(_translate("MainWindow", "Readout"))
 
 
 if __name__ == "__main__":

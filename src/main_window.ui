@@ -15,6 +15,18 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_2">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
     <item row="0" column="0">
      <layout class="QGridLayout" name="gridLayout">
       <property name="spacing">
@@ -140,8 +152,8 @@
    <addaction name="actionSink"/>
    <addaction name="actionSplitter"/>
    <addaction name="actionJoiner"/>
+   <addaction name="actionReadout"/>
   </widget>
-  <widget class="QStatusBar" name="statusBar"/>
   <action name="actionNew">
    <property name="text">
     <string>New</string>
@@ -214,6 +226,11 @@
   <action name="actionStream">
    <property name="text">
     <string>Stream</string>
+   </property>
+  </action>
+  <action name="actionReadout">
+   <property name="text">
+    <string>Readout</string>
    </property>
   </action>
  </widget>

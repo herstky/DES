@@ -1,14 +1,21 @@
 from .event_queue import EventQueue
 from .event import Event
 from .components import Water, Fiber
-from .views import ConnectionView, SourceView, SinkView, SplitterView, JoinerView
+from .views import ReadoutView, StreamView, ConnectionView, SourceView, SinkView, SplitterView, JoinerView
+
 
 
 class Model:
     def __init__(self, gui, name='Model'):
         self.gui = gui
         self.name = name
+        self.view = None
 
+
+class Readout(Model):
+    def __init__(self, gui, name='Readout'):
+        super().__init__(gui, name)
+        self.view = ReadoutView(self)
 
 class Stream(Model):
     def __init__(self, gui, name='Stream', inlet_connection=None, outlet_connection=None):
@@ -17,11 +24,12 @@ class Stream(Model):
             self.add_inlet_connection(inlet_connection)
         else:
             self.inlet_connection = None
-
         if outlet_connection:
             self.add_outlet_connection(outlet_connection)
         else:
             self.outlet_connection = None
+
+        self.view = StreamView(self)
 
     def __del__(self):
         try:

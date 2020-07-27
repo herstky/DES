@@ -1,12 +1,12 @@
 from enum import Enum
 
-from PyQt5.QtWidgets import QAction, QPushButton, QLabel, QWidget, QGraphicsScene, QMainWindow, QGraphicsItem
-from PyQt5.QtGui import QPixmap, QWindow, QPen, QTransform
+from PyQt5.QtWidgets import QAction, QPushButton, QLabel, QWidget, QGraphicsScene, QMainWindow, QGraphicsItem, QGraphicsLineItem
+from PyQt5.QtGui import QPixmap, QWindow, QPen, QTransform, QColor
 from PyQt5.QtCore import QTimer, pyqtSlot, QEvent, Qt, QLineF, QPoint, QPointF, QRectF
 
 from src.simulation import Simulation
 from src.main_window import Ui_MainWindow
-from src.models import Source, Sink, Stream, Connection, Joiner, Splitter
+from src.models import Source, Sink, Stream, Connection, Joiner, Splitter, Readout
 
 class State(Enum):
     RUNNING = 1
@@ -14,6 +14,7 @@ class State(Enum):
     PLACING_MODULE = 3
     PLACING_STREAM = 4
     DRAWING_STREAM = 5
+    PLACING_READOUT = 6
 
 class ApplicationWindow(QMainWindow):
     def __init__(self):
@@ -36,14 +37,15 @@ class ApplicationWindow(QMainWindow):
         self.timer = QTimer()
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.simulation.run)
-        # self.timer.start()
 
         self.ui.actionStart.triggered.connect(self.timer.start)
+        self.ui.actionStop.triggered.connect(self.timer.stop)
         self.ui.actionStream.triggered.connect(self.create_stream)
         self.ui.actionSource.triggered.connect(self.create_source)
         self.ui.actionSink.triggered.connect(self.create_sink)
         self.ui.actionSplitter.triggered.connect(self.create_splitter)
         self.ui.actionJoiner.triggered.connect(self.create_joiner)
+        self.ui.actionReadout.triggered.connect(self.create_readout)
 
         self.setMouseTracking(True)
         self.ui.centralwidget.setMouseTracking(True)
@@ -61,13 +63,12 @@ class ApplicationWindow(QMainWindow):
         if event.type() == QEvent.HoverMove and source is self:
             self.mouse_x = event.pos().x()
             self.mouse_y = event.pos().y()
-            if self.state is State.PLACING_MODULE or self.state is State.PLACING_STREAM:
+            if self.state is State.PLACING_MODULE or self.state is State.PLACING_STREAM or self.state is State.PLACING_READOUT:
                 self.floating_widget.setGeometry(self.mouse_x, self.mouse_y, self.floating_widget.width(), self.floating_widget.height())
             if self.state is State.DRAWING_STREAM:
                 p1 = self.floating_line.line().p1()
                 p2 = self.adjust_coords(QPoint(self.mouse_x, self.mouse_y))
                 self.floating_line.setLine(QLineF(p1, p2))
-        # print(f'({self.mouse_x}, {self.mouse_y})')
 
         return super(ApplicationWindow, self).eventFilter(source, event)
 
@@ -143,8 +144,8 @@ class ApplicationWindow(QMainWindow):
             for view in self.views:
                 if type(view.model) is Connection and view.graphics_item is colliding_item:
                     self.state = State.DRAWING_STREAM
-                    p1 = QPointF(colliding_item.scenePos().x() + colliding_item.boundingRect().width() / 2, 
-                                 colliding_item.scenePos().y() + colliding_item.boundingRect().height() / 2)
+                    p1 = QPointF(colliding_item.scenePos().x() + colliding_item.boundingRect().width() / 2 - 1, 
+                                 colliding_item.scenePos().y() + colliding_item.boundingRect().height() / 2 - 1)
                     p2 = pos
                     pen = QPen()
                     pen.setWidth(2)
@@ -168,12 +169,16 @@ class ApplicationWindow(QMainWindow):
         for colliding_item in self.scene.collidingItems(test_line_item):
             for view in self.views:
                 if type(view.model) is Connection and view.graphics_item is colliding_item:
-                    p1 = QPointF(colliding_item.scenePos().x() + colliding_item.boundingRect().width() / 2, 
-                                 colliding_item.scenePos().y() + colliding_item.boundingRect().height() / 2)
+                    p1 = QPointF(colliding_item.scenePos().x() + colliding_item.boundingRect().width() / 2 - 1, 
+                                 colliding_item.scenePos().y() + colliding_item.boundingRect().height() / 2 - 1)
                     p2 = self.floating_line.line().p1()
+                    self.scene.removeItem(self.floating_line)
                     self.floating_line.setLine(QLineF(p1, p2)) 
-                    self.floating_line.setZValue(-1)
                     self.floating_model.add_outlet_connection(view.model)
+                    self.floating_model.view.multiline = Multiline(self.scene, self.floating_line.line())
+                    self.floating_model.view.multiline.snap_single_line()
+                    self.floating_model = None
+                    self.floating_line = None
                     completed = True
 
         self.scene.removeItem(test_line_item)
@@ -182,3 +187,58 @@ class ApplicationWindow(QMainWindow):
             self.scene.removeItem(self.floating_line)
             self.floating_line = None
     
+    @pyqtSlot()
+    def create_readout(self):
+        label = QLabel(self)
+        label.setPixmap(QPixmap(15, 15))
+        label.pixmap().fill(QColor(0, 0, 0))
+        label.setAlignment(Qt.AlignLeft | Qt.AlignBottom)
+        label.setGeometry(self.mouse_x, self.mouse_y, 15, 15)
+        label.show()
+        self.state = State.PLACING_READOUT
+        self.floating_widget = label
+        self.floating_model = Readout(self)
+
+class Multiline:
+    def __init__(self, scene, *args):
+        self.scene = scene
+        self.line_pairs = []
+        self.pen = QPen()
+        self.pen.setWidth(2)
+
+        for line in args:
+            self.add_graphics_line_item(line)
+  
+
+    def add_graphics_line_item(self, line):
+        line_item = QGraphicsLineItem(line)
+        line_item.setPen(self.pen)
+        line_item.setZValue(-1)
+        self.scene.addItem(line_item)
+        pair = (line, line_item)
+        self.line_pairs.append(pair)
+        return pair
+
+    def set_pen(self, pen):
+        self.pen = pen
+        for _, line_item in self.line_pairs:
+            line_item.setPen(self.pen)
+
+    def snap_single_line(self):
+        line, line_item = self.line_pairs[0]
+ 
+        line1 = QLineF(line.p1().x(), line.p1().y(), line.p1().x(), line.p2().y())
+        line2 = QLineF(line.p1().x(), line.p2().y(), line.p2().x(), line.p2().y())
+        line_item.setLine(line1)
+        self.add_graphics_line_item(line2)
+
+
+    def drag_joint(self):
+        pass
+
+
+
+
+
+
+

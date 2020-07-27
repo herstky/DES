@@ -1,18 +1,41 @@
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QGraphicsPixmapItem
-from PyQt5.QtCore import QPoint
+from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsRectItem
+from PyQt5.QtCore import QPoint, QRectF
 
 class View:
-    def __init__(self, model, image_path):
+    def __init__(self, model, image_path=None):
         self.model = model
         self.model.gui.views.append(self)
         self.image_path = image_path
-        self.pixmap = QPixmap(self.image_path)
+        if self.image_path:
+            self.pixmap = QPixmap(self.image_path)
+        else:
+            self.pixmap = None
         self.graphics_item = None
     
     def add_to_scene(self, scene):
         self.graphics_item = scene.addPixmap(self.pixmap)
         return self.graphics_item
+
+
+class ReadoutView(View):
+    def __init__(self, model):
+        super().__init__(model)
+        self.rect = QRectF(0, 0, 15, 15)
+
+    def add_to_scene(self, scene):
+        self.graphics_item = scene.addItem(QGraphicsRectItem(self.rect))
+        return self.graphics_item
+
+class StreamView(View):
+    def __init__(self, model, multiline=None):
+        super().__init__(model)
+        self.multiline = multiline
+
+class ConnectionView(View):
+    def __init__(self, model):
+        super().__init__(model, 'assets/connection.png')
+
 
 class ModuleView(View):
     def __init__(self, model, image_path):
@@ -25,11 +48,6 @@ class ModuleView(View):
 
     def set_connections(self):
         pass
-
-
-class ConnectionView(ModuleView):
-    def __init__(self, model):
-        super().__init__(model, 'assets/connection.png')
 
 
 class SourceView(ModuleView):
