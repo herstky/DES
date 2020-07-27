@@ -32,7 +32,7 @@ class ConnectionView(ModuleView):
         super().__init__(model, 'assets/connection.png')
 
 
-class SourveView(ModuleView):
+class SourceView(ModuleView):
     def __init__(self, model):
         super().__init__(model, 'assets/source.png')
 
@@ -50,3 +50,39 @@ class SinkView(ModuleView):
         connection = self.model.inlet_connections[0]
         connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
         connection.view.graphics_item.setPos(QPoint(-5, -5))
+
+
+class SplitterView(ModuleView):
+    def __init__(self, model):
+        super().__init__(model, 'assets/splitter.png')
+
+    def set_connections(self):
+        connection = self.model.inlet_connections[0]
+        connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
+        connection.view.graphics_item.setPos(QPoint(-5, 37))
+
+        connection = self.model.outlet_connections[0]
+        connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
+        connection.view.graphics_item.setPos(QPoint(36, -4))
+
+        connection = self.model.outlet_connections[1]
+        connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
+        connection.view.graphics_item.setPos(QPoint(36, 78))
+
+
+class JoinerView(ModuleView):
+    def __init__(self, model):
+        super().__init__(model, 'assets/joiner.png')
+
+    def set_connections(self):
+        connection = self.model.inlet_connections[0]
+        connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
+        connection.view.graphics_item.setPos(QPoint(-5, 36))
+
+        connection = self.model.inlet_connections[1]
+        connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
+        connection.view.graphics_item.setPos(QPoint(37, -5))
+
+        connection = self.model.outlet_connections[0]
+        connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
+        connection.view.graphics_item.setPos(QPoint(78, 36))

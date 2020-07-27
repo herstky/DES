@@ -9,7 +9,7 @@ class Simulation:
         self.gui = gui
         Event.register_components([Water, Fiber])
         self.iteration = 1
-        self.modules = self.complicated_example1()
+        self.modules = []
 
     def run(self):
         print(f'Iteration {self.iteration}, {Event.count} events')

@@ -6,7 +6,7 @@ from PyQt5.QtCore import QTimer, pyqtSlot, QEvent, Qt, QLineF, QPoint, QPointF, 
 
 from src.simulation import Simulation
 from src.main_window import Ui_MainWindow
-from src.models import Source, Sink, Stream
+from src.models import Source, Sink, Stream, Connection, Joiner, Splitter
 
 class State(Enum):
     RUNNING = 1
@@ -38,9 +38,12 @@ class ApplicationWindow(QMainWindow):
         self.timer.timeout.connect(self.simulation.run)
         # self.timer.start()
 
+        self.ui.actionStart.triggered.connect(self.timer.start)
         self.ui.actionStream.triggered.connect(self.create_stream)
         self.ui.actionSource.triggered.connect(self.create_source)
         self.ui.actionSink.triggered.connect(self.create_sink)
+        self.ui.actionSplitter.triggered.connect(self.create_splitter)
+        self.ui.actionJoiner.triggered.connect(self.create_joiner)
 
         self.setMouseTracking(True)
         self.ui.centralwidget.setMouseTracking(True)
@@ -84,11 +87,19 @@ class ApplicationWindow(QMainWindow):
 
     @pyqtSlot()
     def create_source(self):
-        self.add_module(Source(self))
+        self.add_module(Source(self, 'Source', 500))
 
     @pyqtSlot()
     def create_sink(self):
-        self.add_module(Sink(self))
+        self.add_module(Sink(self, 'Sink'))
+
+    @pyqtSlot()
+    def create_splitter(self):
+        self.add_module(Splitter(self, 'Splitter'))
+
+    @pyqtSlot()
+    def create_joiner(self):
+        self.add_module(Joiner(self, 'Joiner'))
 
     def add_module(self, module):
         label = QLabel(self)
@@ -125,29 +136,49 @@ class ApplicationWindow(QMainWindow):
         label.show()
         self.floating_widget = label
 
-
-
     def place_stream(self, pos):
-        self.state = State.DRAWING_STREAM
-        pos = self.adjust_coords(QPoint(self.mouse_x, self.mouse_y))
         line = QLineF(pos, pos)
         self.floating_line = self.scene.addLine(line)
         for colliding_item in self.scene.collidingItems(self.floating_line):
-            # if colliding_item.
-            pass
-        pen = QPen()
-        pen.setWidth(2)
-        self.floating_line.setPen(pen)
+            for view in self.views:
+                if type(view.model) is Connection and view.graphics_item is colliding_item:
+                    self.state = State.DRAWING_STREAM
+                    p1 = QPointF(colliding_item.scenePos().x() + colliding_item.boundingRect().width() / 2, 
+                                 colliding_item.scenePos().y() + colliding_item.boundingRect().height() / 2)
+                    p2 = pos
+                    pen = QPen()
+                    pen.setWidth(2)
+                    self.floating_line.setPen(pen)
+                    self.floating_line.setLine(QLineF(p1, p2))  
+                    self.floating_model = Stream(self, 'Stream', view.model) 
 
+        if self.state is not State.DRAWING_STREAM:
+            self.state = State.IDLE
+            self.scene.removeItem(self.floating_line)
+            self.floating_line = None
         self.floating_widget.setParent(None)
         self.floating_widget = None
-        # print(self.scene.itemAt(pos.x(), pos.y(), QTransform()))
 
 
     def complete_stream(self, pos):
         self.state = State.IDLE
-        line = QLineF(pos, QPoint(pos.x(), pos.y()))
-        line_item = self.scene.addLine(line)
-        print(self.scene.collidingItems(line_item))
-        self.scene.removeItem(line_item)
+        line = QLineF(pos, pos)
+        test_line_item = self.scene.addLine(line)
+        completed = False
+        for colliding_item in self.scene.collidingItems(test_line_item):
+            for view in self.views:
+                if type(view.model) is Connection and view.graphics_item is colliding_item:
+                    p1 = QPointF(colliding_item.scenePos().x() + colliding_item.boundingRect().width() / 2, 
+                                 colliding_item.scenePos().y() + colliding_item.boundingRect().height() / 2)
+                    p2 = self.floating_line.line().p1()
+                    self.floating_line.setLine(QLineF(p1, p2)) 
+                    self.floating_line.setZValue(-1)
+                    self.floating_model.add_outlet_connection(view.model)
+                    completed = True
+
+        self.scene.removeItem(test_line_item)
+        if self.floating_model and not completed:
+            del self.floating_model
+            self.scene.removeItem(self.floating_line)
+            self.floating_line = None
     

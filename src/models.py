@@ -1,7 +1,7 @@
 from .event_queue import EventQueue
 from .event import Event
 from .components import Water, Fiber
-from .views import SourveView, SinkView, ConnectionView
+from .views import ConnectionView, SourceView, SinkView, SplitterView, JoinerView
 
 
 class Model:
@@ -24,8 +24,11 @@ class Stream(Model):
             self.outlet_connection = None
 
     def __del__(self):
-        self.remove_inlet_connection()
-        self.remove_outlet_connection
+        try:
+            self.remove_inlet_connection()
+            self.remove_outlet_connection()
+        except Exception:
+            pass
 
     def add_inlet_connection(self, connection):
         self.inlet_connection = connection
@@ -88,7 +91,8 @@ class Connection(Model):
 
 class Module(Model):
     def __init__(self, gui, name='Module'):
-        super().__init__(gui, name)
+        super().__init__(gui, name)        
+        self.gui.simulation.modules.append(self)
         self.inlet_connections = []
         self.outlet_connections = []
         self.queue = EventQueue()
@@ -104,12 +108,12 @@ class Module(Model):
 
 
 class Source(Module):
-    def __init__(self, gui, name='Source', outlet_capacity=1000, volumetric_fractions=None, event_rate=1000):
+    def __init__(self, gui, name='Source', outlet_capacity=100000, volumetric_fractions=None, event_rate=1000):
         super().__init__(gui, name)
-        self.add_outlet_connection(Connection(self.gui, 'Outlet', outlet_capacity))
+        self.add_outlet_connection(Connection(self.gui, 'Outlet', self, outlet_capacity))
         self.volumetric_fractions = volumetric_fractions
         self.event_rate = event_rate
-        self.view = SourveView(self)
+        self.view = SourceView(self)
 
     def process(self):
         connection, *_ = self.outlet_connections
@@ -137,9 +141,9 @@ class Source(Module):
 
 
 class Sink(Module):
-    def __init__(self, gui, name='Sink', inlet_capacity=1000):
+    def __init__(self, gui, name='Sink', inlet_capacity=100000):
         super().__init__(gui, name)
-        self.add_inlet_connection(Connection(self.gui, 'Inlet', inlet_capacity))
+        self.add_inlet_connection(Connection(self.gui, 'Inlet', self, inlet_capacity))
         self.view = SinkView(self)
 
     def process(self):
@@ -151,12 +155,13 @@ class Sink(Module):
 
 
 class Splitter(Module):
-    def __init__(self, gui, name='Splitter', inlet_capacity=1000, split_fraction=.5):
+    def __init__(self, gui, name='Splitter', inlet_capacity=100000, split_fraction=.5):
         super().__init__(gui, name)
         self.split_fraction = split_fraction
-        self.add_inlet_connection(Connection(self.gui, 'Inlet', inlet_capacity))
-        self.add_outlet_connection(Connection(self.gui, 'Outlet1', inlet_capacity * split_fraction))
-        self.add_outlet_connection(Connection(self.gui, 'Outlet2', inlet_capacity * (1 - split_fraction)))
+        self.add_inlet_connection(Connection(self.gui, 'Inlet', self, inlet_capacity))
+        self.add_outlet_connection(Connection(self.gui, 'Outlet1', self, inlet_capacity * split_fraction))
+        self.add_outlet_connection(Connection(self.gui, 'Outlet2', self, inlet_capacity * (1 - split_fraction)))
+        self.view = SplitterView(self)
 
     def process(self):
         inlet_connection, *_ = self.inlet_connections
@@ -177,11 +182,12 @@ class Splitter(Module):
 
 
 class Joiner(Module):
-    def __init__(self, gui, name='Joiner', inlet_capacity1=500, inlet_capacity2=500):
+    def __init__(self, gui, name='Joiner', inlet_capacity1=50000, inlet_capacity2=50000):
         super().__init__(gui, name)
-        self.add_inlet_connection(Connection(self.gui, 'Inlet1', inlet_capacity1))
-        self.add_inlet_connection(Connection(self.gui, 'Inlet2', inlet_capacity2))
-        self.add_outlet_connection(Connection(self.gui, 'Outlet', inlet_capacity1 + inlet_capacity2))
+        self.add_inlet_connection(Connection(self.gui, 'Inlet1', self, inlet_capacity1))
+        self.add_inlet_connection(Connection(self.gui, 'Inlet2', self, inlet_capacity2))
+        self.add_outlet_connection(Connection(self.gui, 'Outlet', self, inlet_capacity1 + inlet_capacity2))
+        self.view = JoinerView(self)
 
     def process(self):
         inlet_connection1, inlet_connection2, *_ = self.inlet_connections
