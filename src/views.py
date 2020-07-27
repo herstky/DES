@@ -5,6 +5,7 @@ from PyQt5.QtCore import QPoint
 class View:
     def __init__(self, model, image_path):
         self.model = model
+        self.model.gui.views.append(self)
         self.image_path = image_path
         self.pixmap = QPixmap(self.image_path)
         self.graphics_item = None
