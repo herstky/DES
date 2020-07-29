@@ -26,6 +26,7 @@ class ReadoutView(View):
     def __init__(self, model):
         super().__init__(model)
         self.rect = QRectF(0, 0, 15, 15)
+        self.orientation = 'horizontal'
 
     def add_to_scene(self, scene):
         self.graphics_item = scene.addRect(self.rect)
