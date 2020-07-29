@@ -1,8 +1,7 @@
 from .event_queue import EventQueue
 from .event import Event
-from .components import Water, Fiber
 from .views import ReadoutView, StreamView, ConnectionView, SourceView, SinkView, SplitterView, JoinerView
-
+from .species import State
 
 
 class Model:
@@ -128,18 +127,19 @@ class Source(Module):
         generated_amount = 0
         for i in range(self.event_rate):
             volume = connection.capacity / self.event_rate
-            components = []
+            species = []
             if self.volumetric_fractions:
-                for component in Event.registered_components:
-                    fraction = self.volumetric_fractions[component.name]
-                    components.append(Component(fraction * volume))
+                for species_name, state in Event.registered_species:
+                    fraction = self.volumetric_fractions[(species_name, state)]
+                    species.append((species_name, state, fraction * volume))
             else:
-                for component in Event.registered_components:
-                    fraction = 1 / len(Event.registered_components)
-                    components.append(component(fraction * volume))
+                for species_name, state in Event.registered_species:
+                    fraction = 1 / len(Event.registered_species)
+                    species.append((species_name, state, fraction * volume))
+
             
             # Create events at outlet connection
-            connection.queue.enqueue(Event(components))
+            connection.queue.enqueue(Event(species))
             generated_amount += volume
 
         print(f'{self.name} generated {generated_amount}')

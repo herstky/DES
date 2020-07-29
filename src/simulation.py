@@ -1,13 +1,12 @@
-from src.event import Event
-from src.models import Source, Sink, Splitter, Joiner, Stream
-from src.components import Water, Fiber
-
+from .event import Event
+from .models import Source, Sink, Splitter, Joiner, Stream
+from .species import State
 
 
 class Simulation:
     def __init__(self, gui):
         self.gui = gui
-        Event.register_components([Water, Fiber])
+        Event.register_species([('water', State.LIQUID), ('wood fiber', State.SOLID)])
         self.iteration = 1
         self.modules = []
 
@@ -18,7 +17,6 @@ class Simulation:
         # input('Press enter to continue')
         print()
         self.iteration += 1
-
 
     def source_to_sink_example(self):
         source = Source(self.gui, 'self, Source', 100)

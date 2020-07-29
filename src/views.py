@@ -1,5 +1,5 @@
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsRectItem
+from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsRectItem, QGraphicsTextItem
 from PyQt5.QtCore import QPoint, QRectF
 
 class View:
@@ -30,6 +30,8 @@ class ReadoutView(View):
 
     def add_to_scene(self, scene):
         self.graphics_item = scene.addRect(self.rect)
+        self.text_item = QGraphicsTextItem(self.graphics_item)
+        self.text_item.setPlainText('foobar')
         return self.graphics_item
 
 class StreamView(View):

@@ -9,6 +9,7 @@ Support arbitrary number of components: water, fiber, filler, etc.
 - Each instance of Event may need to have the same list of components, but with different values for magnitudes
 More blocks
 Comments
+Save and load
 
 Considerations:
 - Refactor Multiline class into helper functions
