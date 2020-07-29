@@ -17,6 +17,10 @@ class View:
         self.graphics_item = scene.addPixmap(self.pixmap)
         return self.graphics_item
 
+    def remove_from_scene(self, scene):
+        self.scene.removeItem(self.graphics_item)
+        self.model.gui.views.remove(self)
+
 
 class ReadoutView(View):
     def __init__(self, model):
@@ -24,13 +28,13 @@ class ReadoutView(View):
         self.rect = QRectF(0, 0, 15, 15)
 
     def add_to_scene(self, scene):
-        self.graphics_item = scene.addItem(QGraphicsRectItem(self.rect))
+        self.graphics_item = scene.addRect(self.rect)
         return self.graphics_item
 
 class StreamView(View):
     def __init__(self, model, multiline=None):
         super().__init__(model)
-        self.multiline = multiline
+        self.multiline = multiline        
 
 class ConnectionView(View):
     def __init__(self, model):
