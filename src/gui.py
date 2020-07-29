@@ -7,18 +7,28 @@ from PyQt5.QtCore import QTimer, pyqtSlot, QEvent, Qt, QLineF, QPoint, QPointF, 
 from .simulation import Simulation
 from .main_window import Ui_MainWindow
 from .models import Source, Sink, Stream, Connection, Joiner, Splitter, Readout
-from .views import StreamView
+from .views import StreamView, ReadoutView
 
-class SimulationState(Enum):
-    RUNNING = 1
-    IDLE = 2
-    PLACING_MODULE = 3
-    PLACING_STREAM = 4
-    DRAWING_STREAM = 5
-    PLACING_READOUT = 6
-    DRAWING_READOUT = 7
+
 
 class ApplicationWindow(QMainWindow):
+    class State(Enum):
+        running = 1
+        idle = 2
+        placing_module = 3
+        placing_stream = 4
+        drawing_stream = 5
+        placing_readout = 6
+        drawing_readout = 7
+
+    running = State.running
+    idle = State.idle
+    placing_module = State.placing_module
+    placing_stream = State.placing_stream
+    drawing_stream = State.drawing_stream
+    placing_readout = State.placing_readout
+    drawing_readout = State.drawing_readout
+
     def __init__(self):
         super(ApplicationWindow, self).__init__()
         self.initUI()
@@ -26,7 +36,7 @@ class ApplicationWindow(QMainWindow):
     def initUI(self):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.state = SimulationState(SimulationState.IDLE)
+        self.state = self.idle
         self.scene = QGraphicsScene(self)
         self.scene.setSceneRect(QRectF(0, 0, self.ui.graphicsView.width(), self.ui.graphicsView.height()))
         self.ui.graphicsView.setScene(self.scene)   
@@ -37,7 +47,7 @@ class ApplicationWindow(QMainWindow):
         self.simulation = Simulation(self)
 
         self.timer = QTimer()
-        self.timer.setInterval(1000)
+        self.timer.setInterval(100)
         self.timer.timeout.connect(self.simulation.run)
 
         self.ui.actionStart.triggered.connect(self.timer.start)
@@ -64,20 +74,19 @@ class ApplicationWindow(QMainWindow):
         if event.type() == QEvent.HoverMove and source is self:
             self.mouse_x = event.pos().x()
             self.mouse_y = event.pos().y()
-            if self.state is SimulationState.PLACING_MODULE:
+            if self.state is self.placing_module:
                 width = self.floating_model.view.graphics_item.pixmap().width()
                 height = self.floating_model.view.graphics_item.pixmap().height()
                 self.floating_model.view.graphics_item.setPos(self.map_from_global_to_scene(QPoint(self.mouse_x - width, self.mouse_y - height)))
-            elif self.state is SimulationState.PLACING_STREAM or self.state is SimulationState.PLACING_READOUT:
+            elif self.state is self.placing_stream or self.state is self.placing_readout:
                 width = self.floating_model.view.graphics_item.rect().width()
                 height = self.floating_model.view.graphics_item.rect().height()
                 self.floating_model.view.graphics_item.setPos(self.map_from_global_to_scene(QPoint(self.mouse_x - width / 2, self.mouse_y - height / 2)))
-                # self.floating_widget.setGeometry(self.mouse_x, self.mouse_y, self.floating_widget.width(), self.floating_widget.height())
-            elif self.state is SimulationState.DRAWING_STREAM:
+            elif self.state is self.drawing_stream:
                 p1 = self.floating_line.line().p1()
                 p2 = self.map_from_global_to_scene(QPoint(self.mouse_x, self.mouse_y))
                 self.floating_line.setLine(QLineF(p1, p2))
-            elif self.state is SimulationState.DRAWING_READOUT:
+            elif self.state is self.drawing_readout:
                 p1 = self.floating_line.mapToScene(self.floating_line.line().p1()) 
 
                 width = self.floating_model.view.graphics_item.rect().width()
@@ -97,15 +106,15 @@ class ApplicationWindow(QMainWindow):
         return pos
 
     def mousePressEvent(self, event):
-        if self.state is SimulationState.PLACING_MODULE:
+        if self.state is self.placing_module:
             self.place_module()
-        elif self.state is SimulationState.DRAWING_STREAM:
+        elif self.state is self.drawing_stream:
             self.complete_stream(self.map_from_global_to_scene(event.pos()))
-        elif self.state is SimulationState.PLACING_STREAM:
+        elif self.state is self.placing_stream:
             self.start_stream(self.map_from_global_to_scene(event.pos()))
-        elif self.state is SimulationState.DRAWING_READOUT:
+        elif self.state is self.drawing_readout:
             self.complete_readout(self.map_from_global_to_scene(event.pos()))
-        elif self.state is SimulationState.PLACING_READOUT:
+        elif self.state is self.placing_readout:
             self.start_readout(self.map_from_global_to_scene(event.pos()))
  
     @pyqtSlot()
@@ -125,7 +134,7 @@ class ApplicationWindow(QMainWindow):
         self.add_module(Joiner(self, 'Joiner'))
 
     def add_module(self, module):
-        self.state = SimulationState.PLACING_MODULE
+        self.state = self.placing_module
         module.view.add_to_scene(self.scene)
         width = module.view.graphics_item.pixmap().width()
         height = module.view.graphics_item.pixmap().height()
@@ -133,19 +142,16 @@ class ApplicationWindow(QMainWindow):
         self.floating_model = module
 
     def place_module(self):
-        self.state = SimulationState.IDLE
+        self.state = self.idle
         self.floating_model = None
 
     @pyqtSlot()
     def create_stream(self):
-        self.state = SimulationState.PLACING_STREAM
+        self.state = self.placing_stream
         self.floating_model = Stream(self)
         self.floating_model.view.graphics_item = self.scene.addRect(QRectF(0, 0, 5, 5))
         self.floating_model.view.graphics_item.setBrush(Qt.black)
-        # inner_rect_item = self.scene.addRect(QRectF(0, 0, 7, 7))
-        # inner_rect_item.setBrush(Qt.green)
-        # inner_rect_item.setParentItem(self.floating_model.view.graphics_item)
-        # inner_rect_item.setPos(QPoint(2, 2))
+
         width = self.floating_model.view.graphics_item.rect().width()
         height = self.floating_model.view.graphics_item.rect().height()
         self.floating_model.view.graphics_item.setPos(self.map_from_global_to_scene(QPoint(self.mouse_x - width / 2, 
@@ -159,7 +165,7 @@ class ApplicationWindow(QMainWindow):
         for colliding_item in self.scene.collidingItems(self.floating_line):
             for view in self.views:
                 if type(view.model) is Connection and view.graphics_item is colliding_item:
-                    self.state = SimulationState.DRAWING_STREAM
+                    self.state = self.drawing_stream
                     p1 = QPointF(colliding_item.scenePos().x() + colliding_item.boundingRect().width() / 2 - 1, 
                                  colliding_item.scenePos().y() + colliding_item.boundingRect().height() / 2 - 1)
                     p2 = pos
@@ -169,15 +175,15 @@ class ApplicationWindow(QMainWindow):
                     self.floating_line.setLine(QLineF(p1, p2))  
                     self.floating_model.add_inlet_connection(view.model)
 
-        if self.state is not SimulationState.DRAWING_STREAM:
-            self.state = SimulationState.IDLE
+        if self.state is not self.drawing_stream:
+            self.state = self.idle
             self.views.remove(self.floating_model.view)
             del self.floating_model
             self.scene.removeItem(self.floating_line)
             self.floating_line = None
 
     def complete_stream(self, pos):
-        self.state = SimulationState.IDLE
+        self.state = self.idle
         line = QLineF(pos, pos)
         test_line_item = self.scene.addLine(line)
         self.floating_model.view.graphics_item = None
@@ -199,6 +205,7 @@ class ApplicationWindow(QMainWindow):
                     completed = True
 
         self.scene.removeItem(test_line_item)
+
         if self.floating_model and not completed:
             self.views.remove(self.floating_model.view)
             del self.floating_model
@@ -207,16 +214,10 @@ class ApplicationWindow(QMainWindow):
     
     @pyqtSlot()
     def create_readout(self):
-        self.state = SimulationState.PLACING_READOUT
+        self.state = self.placing_readout
         self.floating_model = Readout(self)
-        self.floating_model.view.graphics_item = self.scene.addRect(QRectF(0, 0, 9, 9))
-        self.floating_model.view.graphics_item.setBrush(Qt.black)
-        
-        inner_rect_item = self.scene.addRect(QRectF(0, 0, 7, 7))
-        inner_rect_item.setBrush(Qt.white)
-        inner_rect_item.setParentItem(self.floating_model.view.graphics_item)
-        inner_rect_item.setPos(QPoint(1, 1))
-        
+        self.scene.addItem(self.floating_model.view.graphics_item)
+   
         width = self.floating_model.view.graphics_item.rect().width()
         height = self.floating_model.view.graphics_item.rect().height()
 
@@ -227,19 +228,20 @@ class ApplicationWindow(QMainWindow):
         for colliding_item in self.scene.collidingItems(self.floating_model.view.graphics_item):
             for view in self.views:
                 if type(view.model) is Stream and isinstance(view, StreamView) and colliding_item in view.multiline.line_items:
-                    self.state = SimulationState.DRAWING_READOUT
+                    self.state = self.drawing_readout
+                    self.floating_model.stream = view.model
                     self.floating_line = self.scene.addLine(QLineF())
                     self.floating_line.setParentItem(self.floating_model.view.graphics_item)
                     p1 = p2 = pos
                     angle = colliding_item.line().angle()
                     
                     # snap readout line to colliding line item
-                    if angle == 0.0 or angle == 180.0: # horizontal
+                    if angle == 0.0 or angle == 180.0: 
                         p1.setY(colliding_item.line().y1())
-                        self.floating_model.view.orientation = 'vertical'
-                    elif angle == 90.0 or angle == 270.0: # vertical
+                        self.floating_model.view.orientation = ReadoutView.Orientation.vertical
+                    elif angle == 90.0 or angle == 270.0: 
                         p1.setX(colliding_item.line().x1())
-                        self.floating_model.view.orientation = 'horizontal'
+                        self.floating_model.view.orientation = ReadoutView.Orientation.horizontal
                     p1 = self.floating_line.mapFromScene(p1)
                     p2 = self.floating_line.mapFromScene(p2)
 
@@ -249,18 +251,18 @@ class ApplicationWindow(QMainWindow):
                     self.floating_line.setPen(pen)
                     self.floating_line.setZValue(-1)
 
-        if self.state is not SimulationState.DRAWING_READOUT:
-            self.state = SimulationState.IDLE
+        if self.state is not self.drawing_readout:
+            self.state = self.idle
             self.views.remove(self.floating_model.view)
             self.scene.removeItem(self.floating_model.view.graphics_item)
-            self.floating_line = None
+            del self.floating_model
 
     def complete_readout(self, pos):
-        self.state = SimulationState.IDLE
+        self.state = self.idle
         rect_graphics_item = self.floating_model.view.graphics_item
         line_graphics_item = self.floating_line
 
-        if self.floating_model.view.orientation == 'horizontal':
+        if self.floating_model.view.orientation is ReadoutView.Orientation.horizontal:
             p1 = QPoint(line_graphics_item.line().x1(), line_graphics_item.line().y1())
             p2 = QPoint(line_graphics_item.line().x2(), line_graphics_item.line().y1())
         else:
@@ -278,6 +280,8 @@ class ApplicationWindow(QMainWindow):
         p2 = rect_graphics_item.mapFromScene(p2)
         line_graphics_item.setLine(QLineF(p1, p2)) 
         
+        self.floating_model.view.init_text()
+
         self.floating_model = None
         self.floating_line = None
 

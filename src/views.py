@@ -1,6 +1,8 @@
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsRectItem, QGraphicsTextItem
-from PyQt5.QtCore import QPoint, QRectF
+from enum import Enum
+
+from PyQt5.QtGui import QPixmap, QTextBlockFormat, QTextCursor
+from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsRectItem, QGraphicsTextItem, QGraphicsLineItem
+from PyQt5.QtCore import Qt, QPoint, QRectF
 
 class View:
     def __init__(self, model, image_path=None):
@@ -23,16 +25,37 @@ class View:
 
 
 class ReadoutView(View):
+    class Orientation(Enum):
+        horizontal = 1
+        vertical = 2
+
     def __init__(self, model):
         super().__init__(model)
-        self.rect = QRectF(0, 0, 15, 15)
-        self.orientation = 'horizontal'
+        self.graphics_item = QGraphicsRectItem(QRectF(0, 0, 9, 9))
+        self.graphics_item.setBrush(Qt.black)
 
-    def add_to_scene(self, scene):
-        self.graphics_item = scene.addRect(self.rect)
+        inner_rect_item = QGraphicsRectItem(QRectF(0, 0, 7, 7))
+        inner_rect_item.setBrush(Qt.white)
+        inner_rect_item.setParentItem(self.graphics_item)
+        inner_rect_item.setPos(1, 1)
+
+        self.text_item = None
+        self.orientation = self.Orientation.horizontal
+
+    def line(self):
+        for child in self.graphics_item.childItems():
+            if isinstance(child, QGraphicsLineItem):
+                return child.line()
+
+    def init_text(self):
+        width = self.graphics_item.boundingRect().width()
+        height = self.graphics_item.boundingRect().height()
         self.text_item = QGraphicsTextItem(self.graphics_item)
-        self.text_item.setPlainText('foobar')
-        return self.graphics_item
+        if self.orientation is self.Orientation.vertical:
+            self.text_item.setPos(width / 2, height / 2)
+        else:
+            self.text_item.setPos(width / 2, height / 2)
+     
 
 class StreamView(View):
     def __init__(self, model, multiline=None):

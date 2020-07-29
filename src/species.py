@@ -5,9 +5,9 @@ from enum import Enum
 # - molar mass: kg/mol
 
 class State(Enum):
-    GAS = 1
-    LIQUID = 2
-    SOLID = 3
+    gas = 1
+    liquid = 2
+    solid = 3
 
 gases_dict = {
     'carbon monoxide': {
