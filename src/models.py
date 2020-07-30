@@ -113,7 +113,7 @@ class Connection(Model):
 class InletConnection(Connection):
     def transfer_events(self, amount=0):
         transferred_amount = 0
-        if self.flow_type is Connection.pull_flow:
+        if self.flow_type is Connection.push_flow:
             if amount == 0:
                 amount = self.capacity
             while not self.queue.empty() and transferred_amount + self.queue.peek().aggregate_volume() <= amount <= self.capacity:
@@ -148,7 +148,7 @@ class InletConnection(Connection):
 class OutletConnection(Connection):
     def transfer_events(self, amount=0):
         transferred_amount = 0
-        if self.flow_type is Connection.pull_flow:
+        if self.flow_type is Connection.push_flow:
             if amount == 0:
                 amount = self.capacity
             while not self.module.queue.empty() and transferred_amount + self.module.queue.peek().aggregate_volume() <= amount <= self.capacity:
