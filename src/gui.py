@@ -70,6 +70,25 @@ class ApplicationWindow(QMainWindow):
         self.floating_model = None
         self.floating_line = None
 
+    def map_from_global_to_scene(self, pos):
+        pos = self.ui.graphicsView.parent().mapFromParent(pos)
+        pos = self.ui.graphicsView.mapFromParent(pos)
+        pos = self.ui.graphicsView.mapToScene(pos)
+        return pos
+
+    @property
+    def mouse_scene_pos(self):
+        return self.map_from_global_to_scene(QPoint(self.mouse_x, self.mouse_y))
+
+    def offset_point(self, point, dx, dy):
+        return QPoint(point.x() + dx, point.y() + dy)
+
+    def remove_floating_objects(self):
+            self.views.remove(self.floating_model.view)
+            del self.floating_model
+            self.scene.removeItem(self.floating_line)
+            self.floating_line = None
+
     def eventFilter(self, source, event):
         if event.type() == QEvent.HoverMove and source is self:
             self.mouse_x = event.pos().x()
@@ -77,14 +96,14 @@ class ApplicationWindow(QMainWindow):
             if self.state is ApplicationWindow.placing_module:
                 width = self.floating_model.view.graphics_item.pixmap().width()
                 height = self.floating_model.view.graphics_item.pixmap().height()
-                self.floating_model.view.graphics_item.setPos(self.map_from_global_to_scene(QPoint(self.mouse_x - width, self.mouse_y - height)))
+                self.floating_model.view.graphics_item.setPos(self.offset_point(self.mouse_scene_pos, -width, -height))
             elif self.state is ApplicationWindow.placing_stream or self.state is self.placing_readout:
                 width = self.floating_model.view.graphics_item.rect().width()
                 height = self.floating_model.view.graphics_item.rect().height()
-                self.floating_model.view.graphics_item.setPos(self.map_from_global_to_scene(QPoint(self.mouse_x - width / 2, self.mouse_y - height / 2)))
+                self.floating_model.view.graphics_item.setPos(self.offset_point(self.mouse_scene_pos, -width / 2, -height / 2))
             elif self.state is ApplicationWindow.drawing_stream:
                 p1 = self.floating_line.line().p1()
-                p2 = self.map_from_global_to_scene(QPoint(self.mouse_x, self.mouse_y))
+                p2 = self.mouse_scene_pos
                 self.floating_line.setLine(QLineF(p1, p2))
             elif self.state is ApplicationWindow.drawing_readout:
                 p1 = self.floating_line.mapToScene(self.floating_line.line().p1()) 
@@ -92,30 +111,25 @@ class ApplicationWindow(QMainWindow):
                 width = self.floating_model.view.graphics_item.rect().width()
                 height = self.floating_model.view.graphics_item.rect().height()
 
-                self.floating_model.view.graphics_item.setPos(self.map_from_global_to_scene(QPoint(self.mouse_x - width / 2, self.mouse_y - height / 2)))
+                self.floating_model.view.graphics_item.setPos(self.offset_point(self.mouse_scene_pos, -width / 2, -height / 2))
                 p1 = self.floating_line.mapFromScene(p1)
-                p2 = self.floating_line.mapFromScene(self.map_from_global_to_scene(QPoint(self.mouse_x, self.mouse_y)))
+                p2 = self.floating_line.mapFromScene(self.mouse_scene_pos)
                 self.floating_line.setLine(QLineF(p1, p2))
 
         return super(ApplicationWindow, self).eventFilter(source, event)
 
-    def map_from_global_to_scene(self, pos):
-        pos = self.ui.graphicsView.parent().mapFromParent(pos)
-        pos = self.ui.graphicsView.mapFromParent(pos)
-        pos = self.ui.graphicsView.mapToScene(pos)
-        return pos
-
     def mousePressEvent(self, event):
+        scene_pos = self.map_from_global_to_scene(event.pos())
         if self.state is ApplicationWindow.placing_module:
             self.place_module()
         elif self.state is ApplicationWindow.drawing_stream:
-            self.complete_stream(self.map_from_global_to_scene(event.pos()))
+            self.complete_stream(scene_pos)
         elif self.state is ApplicationWindow.placing_stream:
-            self.start_stream(self.map_from_global_to_scene(event.pos()))
+            self.start_stream(scene_pos)
         elif self.state is ApplicationWindow.drawing_readout:
-            self.complete_readout(self.map_from_global_to_scene(event.pos()))
+            self.complete_readout(scene_pos)
         elif self.state is ApplicationWindow.placing_readout:
-            self.start_readout(self.map_from_global_to_scene(event.pos()))
+            self.start_readout(scene_pos)
  
     @pyqtSlot()
     def create_source(self):
@@ -138,7 +152,7 @@ class ApplicationWindow(QMainWindow):
         module.view.add_to_scene(self.scene)
         width = module.view.graphics_item.pixmap().width()
         height = module.view.graphics_item.pixmap().height()
-        module.view.graphics_item.setPos(self.map_from_global_to_scene(QPoint(self.mouse_x - width, self.mouse_y - height)))
+        module.view.graphics_item.setPos(self.offset_point(self.mouse_scene_pos, -width, -height))
         self.floating_model = module
 
     def place_module(self):
@@ -150,12 +164,12 @@ class ApplicationWindow(QMainWindow):
         self.state = self.placing_stream
         self.floating_model = Stream(self)
         self.floating_model.view.graphics_item = self.scene.addRect(QRectF(0, 0, 5, 5))
-        self.floating_model.view.graphics_item.setBrush(Qt.black)
-
-        width = self.floating_model.view.graphics_item.rect().width()
-        height = self.floating_model.view.graphics_item.rect().height()
-        self.floating_model.view.graphics_item.setPos(self.map_from_global_to_scene(QPoint(self.mouse_x - width / 2, 
-                                                      self.mouse_y - height / 2)))
+        
+        stream_graphics_item = self.floating_model.view.graphics_item
+        stream_graphics_item.setBrush(Qt.black)
+        width = stream_graphics_item.rect().width()
+        height = stream_graphics_item.rect().height()
+        stream_graphics_item.setPos(self.offset_point(self.mouse_scene_pos, -width / 2, -height / 2))
 
     def start_stream(self, pos):
         line = QLineF(pos, pos)
@@ -167,8 +181,9 @@ class ApplicationWindow(QMainWindow):
                 if isinstance(view.model, Connection) and view.graphics_item is colliding_item:
                     self.floating_model.add_connection(view.model)
                     self.state = self.drawing_stream
-                    p1 = QPointF(colliding_item.scenePos().x() + colliding_item.boundingRect().width() / 2 - 1, 
-                                 colliding_item.scenePos().y() + colliding_item.boundingRect().height() / 2 - 1)
+                    width = colliding_item.boundingRect().width()
+                    height = colliding_item.boundingRect().height()
+                    p1 = self.offset_point(colliding_item.scenePos(), width / 2 - 1, height / 2 - 1)
                     p2 = pos
                     pen = QPen()
                     pen.setWidth(2)
@@ -177,10 +192,7 @@ class ApplicationWindow(QMainWindow):
                     
         if self.state is not ApplicationWindow.drawing_stream:
             self.state = self.idle
-            self.views.remove(self.floating_model.view)
-            del self.floating_model
-            self.scene.removeItem(self.floating_line)
-            self.floating_line = None
+            self.remove_floating_objects()
 
     def complete_stream(self, pos):
         self.state = self.idle
@@ -208,13 +220,17 @@ class ApplicationWindow(QMainWindow):
 
         self.scene.removeItem(test_line_item)
 
-        if self.floating_model and not completed:
+        # If second connection to stream was not succesfully added
+        if not completed:
+            self.state = ApplicationWindow.idle
+
+            # Remove initial connection made
             if self.floating_model.inlet_connection:
-                self.floating_model.remove_connection(self.floating_model.remove_connection)
-            self.views.remove(self.floating_model.view)
-            del self.floating_model
-            self.scene.removeItem(self.floating_line)
-            self.floating_line = None
+                self.floating_model.remove_connection(self.floating_model.inlet_connection)
+            elif self.floating_model.outlet_connection:
+                self.floating_model.remove_connection(self.floating_model.outlet_connection)
+
+            self.remove_floating_objects()
     
     @pyqtSlot()
     def create_readout(self):
@@ -225,8 +241,7 @@ class ApplicationWindow(QMainWindow):
         width = self.floating_model.view.graphics_item.rect().width()
         height = self.floating_model.view.graphics_item.rect().height()
 
-        # Center rect at mouse location
-        self.floating_model.view.graphics_item.setPos(self.map_from_global_to_scene(QPoint(self.mouse_x - width / 2, self.mouse_y - height / 2)))
+        self.floating_model.view.graphics_item.setPos(self.offset_point(self.mouse_scene_pos, -width / 2, -height / 2))
 
     def start_readout(self, pos):
         for colliding_item in self.scene.collidingItems(self.floating_model.view.graphics_item):

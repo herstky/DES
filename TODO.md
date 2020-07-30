@@ -6,8 +6,9 @@ Comments
 Save and load
 Start stream by clicking any connection without a stream
 Refactor creating, drawing, and completion of streams and readouts
+- Should only have one floating object
 
 Considerations:
 - Refactor Multiline class into helper functions
 - Remove floating_line member from gui
-    - set fragmented lines as chains of parent->child QGraphicsItems
+    - Set fragmented lines as chains of parent->child QGraphicsItems

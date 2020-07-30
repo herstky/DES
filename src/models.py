@@ -144,6 +144,13 @@ class InletConnection(Connection):
         self.stream.inlet_connection.event_queue.amount_queued += self.capacity - pulled_amount
         
 
+class PushInletConnection(Connection):
+    def __init__(self, amount=0):
+        super().__init__(amount)
+
+class PullInletConnection(Connection):
+    def __init__(self, amount=0):
+        super().__init__(amount)
 
 class OutletConnection(Connection):
     def transfer_events(self, amount=0):
@@ -176,6 +183,16 @@ class OutletConnection(Connection):
             pushed_amount += event.aggregate_volume()
             for species in event.registered_species:
                 self.flowrates[species] += event.species_volume(species)
+
+
+class PushOutletConnection(Connection):
+    def __init__(self, amount=0):
+        super().__init__(amount)
+
+
+class PullOutletConnection(Connection):
+    def __init__(self, amount=0):
+        super().__init__(amount)
 
 
 class Module(Model):
