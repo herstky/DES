@@ -1,3 +1,5 @@
+from enum import Enum
+
 from .event_queue import EventQueue
 from .event import Event
 from .views import ReadoutView, StreamView, ConnectionView, SourceView, SinkView, SplitterView, JoinerView
@@ -44,33 +46,38 @@ class Stream(Model):
             self.remove_connection(self.outlet_connection)
 
     def add_connection(self, connection):
-        if isinstance(connection, InletConnection) and not self.outlet_connection:
+        if isinstance(connection, InletConnection) and connection.connect(self):
             self.outlet_connection = connection
-            connection.add_stream(self)
             return True
-        elif isinstance(connection, OutletConnection) and not self.inlet_connection:
+        elif isinstance(connection, OutletConnection) and connection.connect(self):
             self.inlet_connection = connection
-            connection.add_stream(self)
             return True
         return False
 
     def remove_connection(self, connection):
         if self.inlet_connection is connection:
-            self.inlet_connection.remove_stream()
+            self.inlet_connection.disconnect()
             self.inlet_connection = None
             return True
         elif self.outlet_connection is connection:
-            self.outlet_connection.remove_stream()
+            self.outlet_connection.disconnect()
             self.outlet_connection = None
             return True
         return False
         
 
 class Connection(Model):
+    class FlowType(Enum):
+        push_flow = 1
+        pull_flow = 2
+    push_flow = FlowType.push_flow
+    pull_flow = FlowType.pull_flow
+
     def __init__(self, gui, name='Connection', module=None, capacity=float('inf')):
         super().__init__(gui, name)
         self.module = module
         self.capacity = capacity
+        self.flow_type = Connection.push_flow
         self.queue = EventQueue()
         self.stream = None
         self.view = ConnectionView(self)
@@ -80,15 +87,23 @@ class Connection(Model):
         self.flowrates = {(species_name, state): 0 for species_name, state in Event.registered_species}
 
     def transfer_events(self, amount=0):
-        pass
+        raise NotImplementedError()
 
-    def add_stream(self, stream):
+    def connect(self, stream):
         self.stream = stream
         self.view.set_connected(True)
+        return True
 
-    def remove_stream(self):
+    def disconnect(self):
         self.stream = None
         self.view.set_connected(False)
+        return True
+
+    def push(self):
+        raise NotImplementedError()
+
+    def pull(self):
+        raise NotImplementedError()
 
     @property
     def backflow(self):
@@ -97,34 +112,65 @@ class Connection(Model):
 
 class InletConnection(Connection):
     def transfer_events(self, amount=0):
-        if amount == 0:
-            amount = self.capacity
         transferred_amount = 0
-        while not self.queue.empty() and transferred_amount + self.queue.peek().aggregate_volume() <= amount <= self.capacity:
-            event = self.queue.dequeue()
-            self.module.queue.enqueue(event)
-            transferred_amount += event.aggregate_volume()
+        if self.flow_type is Connection.pull_flow:
+            if amount == 0:
+                amount = self.capacity
+            while not self.queue.empty() and transferred_amount + self.queue.peek().aggregate_volume() <= amount <= self.capacity:
+                event = self.queue.dequeue()
+                self.module.queue.enqueue(event)
+                transferred_amount += event.aggregate_volume()
+        else:
+            pass
         return transferred_amount
 
+    def connect(self, stream):
+        # Return false if the stream already has a connection to its outlet or if the stream's inlet is not the same type
+        if stream.outlet_connection or stream.inlet_connection and stream.inlet_connection.flow_type is not self.flow_type:
+            return False
+        return super().connect(stream)
+
     def pull(self):
-        pass
+        if self.flow_type is Connection.push_flow:
+            raise ValueError('Flow type mismatch')
+        pulled_amount = 0
+        self.reset_flowrates()
+        while not self.queue.empty() and pulled_amount + self.queue.peek().aggregate_volume() <= self.capacity:
+            event = self.stream.inlet_connection.queue.dequeue(event)
+            self.queue.enqueue(event)
+            pulled_amount += event.aggregate_volume()
+            for species in event.registered_species:
+                self.flowrates[species] += event.species_volume(species)
+        self.stream.inlet_connection.event_queue.amount_queued += self.capacity - pulled_amount
+        
 
 
 class OutletConnection(Connection):
     def transfer_events(self, amount=0):
-        if amount == 0:
-            amount = self.capacity
         transferred_amount = 0
-        while not self.module.queue.empty() and transferred_amount + self.module.queue.peek().aggregate_volume() <= amount <= self.capacity:
-            event = self.module.queue.dequeue()
-            self.queue.enqueue(event)
-            transferred_amount += event.aggregate_volume()
+        if self.flow_type is Connection.pull_flow:
+            if amount == 0:
+                amount = self.capacity
+            while not self.module.queue.empty() and transferred_amount + self.module.queue.peek().aggregate_volume() <= amount <= self.capacity:
+                event = self.module.queue.dequeue()
+                self.queue.enqueue(event)
+                transferred_amount += event.aggregate_volume()
+        else:
+            pass
         return transferred_amount
 
+    def connect(self, stream):
+        # Return false if the stream already has a connection to its inlet or if the stream's outlet is not the same type
+        if stream.inlet_connection or stream.outlet_connection and stream.outlet_connection.flow_type is not self.flow_type:
+            return False
+        return super().connect(stream)
+
     def push(self):
+        if self.flow_type is Connection.pull_flow:
+            raise ValueError('Flow type mismatch')
         pushed_amount = 0
         self.reset_flowrates()
-        while not self.queue.empty() and pushed_amount + self.queue.peek().aggregate_volume() <= self.capacity:  # TODO check correctness of self.capacity here
+        while not self.queue.empty() and pushed_amount + self.queue.peek().aggregate_volume() <= self.capacity:  
             event = self.queue.dequeue()
             self.stream.outlet_connection.queue.enqueue(event)
             pushed_amount += event.aggregate_volume()
@@ -182,6 +228,15 @@ class Source(Module):
 
         # Push events from outlet connection to inlet of module connected by stream
         connection.push()
+
+class Tank(Module):
+    def __init__(self, gui, name='Source'):
+        super().__init__(gui, name)
+
+
+
+class Pump(Module): # TODO pulls into inlet, pushes to outlet
+    pass
 
 
 class Sink(Module):

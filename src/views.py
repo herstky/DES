@@ -1,9 +1,10 @@
 from enum import Enum
 
 from PyQt5.QtGui import QPixmap, QTextBlockFormat, QTextCursor
-from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsRectItem, QGraphicsTextItem, QGraphicsLineItem
+from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsRectItem, QGraphicsTextItem, QGraphicsLineItem, QGraphicsEllipseItem
 from PyQt5.QtCore import Qt, QPoint, QRectF
 
+import src.models as models
 
 
 class View:
@@ -33,16 +34,14 @@ class ReadoutView(View):
 
     def __init__(self, model):
         super().__init__(model)
-        self.graphics_item = QGraphicsRectItem(QRectF(0, 0, 9, 9))
+        self.graphics_item = QGraphicsRectItem(0, 0, 9, 9)
         self.graphics_item.setBrush(Qt.black)
 
-        inner_rect_item = QGraphicsRectItem(QRectF(0, 0, 7, 7))
+        inner_rect_item = QGraphicsRectItem(1, 1, 7, 7, self.graphics_item)
         inner_rect_item.setBrush(Qt.white)
-        inner_rect_item.setParentItem(self.graphics_item)
-        inner_rect_item.setPos(1, 1)
 
         self.text_item = None
-        self.orientation = self.Orientation.horizontal
+        self.orientation = ReadoutView.Orientation.horizontal
 
     def line(self):
         for child in self.graphics_item.childItems():
@@ -53,7 +52,7 @@ class ReadoutView(View):
         width = self.graphics_item.boundingRect().width()
         height = self.graphics_item.boundingRect().height()
         self.text_item = QGraphicsTextItem(self.graphics_item)
-        if self.orientation is self.Orientation.vertical:
+        if self.orientation is ReadoutView.Orientation.vertical:
             self.text_item.setPos(width / 2, height / 2)
         else:
             self.text_item.setPos(width / 2, height / 2)
@@ -66,29 +65,36 @@ class StreamView(View):
 
 class ConnectionView(View):
     def __init__(self, model):
-        super().__init__(model, 'assets/connection.png')
-        self.graphics_item = QGraphicsRectItem(0, 0, 15, 15)
-        self.graphics_item.setBrush(Qt.black)
+        super().__init__(model)
+        if self.model.flow_type is models.Connection.push_flow:
+            self.graphics_item = QGraphicsRectItem(0, 0, 15, 15)
+            self.graphics_item.setBrush(Qt.black)
 
-        inner_rect_item = QGraphicsRectItem(QRectF(0, 0, 13, 13))
-        inner_rect_item.setBrush(Qt.white)
-        inner_rect_item.setParentItem(self.graphics_item)
-        inner_rect_item.setPos(1, 1)
+            inner_rect_item = QGraphicsRectItem(1, 1, 13, 13, self.graphics_item)
+            inner_rect_item.setBrush(Qt.white)
 
-        self.est_conn_rect_item = QGraphicsRectItem(QRectF(0, 0, 7, 7))
-        self.est_conn_rect_item.setBrush(Qt.red)
-        self.est_conn_rect_item.setParentItem(inner_rect_item)
-        self.est_conn_rect_item.setPos(3, 3)
-        self.est_conn_rect_item.setOpacity(0.3)
+            self.est_conn_item = QGraphicsRectItem(4, 4, 7, 7, inner_rect_item)
+            self.est_conn_item.setBrush(Qt.red)
+            self.est_conn_item.setOpacity(0.3)
+        else:
+            self.graphics_item = QGraphicsEllipseItem(0, 0, 15, 15)
+            self.graphics_item.setBrush(Qt.black)
+
+            inner_circle_item = QGraphicsEllipseItem(1, 1, 13, 13, self.graphics_item)
+            inner_circle_item.setBrush(Qt.white)
+
+            self.est_conn_item = QGraphicsEllipseItem(4, 4, 7, 7, inner_red_circle)
+            self.est_conn_item.setBrush(Qt.red)
+            self.est_conn_item.setOpacity(0.3)
 
     def set_pos(self, pos):
         self.graphics_item.setPos(pos)
 
     def set_connected(self, connected):
         if connected:
-            self.est_conn_rect_item.setBrush(Qt.green)
+            self.est_conn_item.setBrush(Qt.green)
         else:
-            self.est_conn_rect_item.setBrush(Qt.red)
+            self.est_conn_item.setBrush(Qt.red)
 
 class ModuleView(View):
     def __init__(self, model, image_path):
@@ -100,7 +106,7 @@ class ModuleView(View):
         return self.graphics_item
 
     def set_connections(self):
-        pass
+        raise NotImplementedError
 
 
 class SourceView(ModuleView):
@@ -110,8 +116,6 @@ class SourceView(ModuleView):
     def set_connections(self):
         connection = self.model.outlet_connections[0]
         connection.view.graphics_item.setParentItem(self.graphics_item)
-        # connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
-        # connection.view.graphics_item.setPos(QPoint(87, 17))
         connection.view.set_pos(QPoint(87, 17))
 
 
@@ -122,7 +126,6 @@ class SinkView(ModuleView):
     def set_connections(self):
         connection = self.model.inlet_connections[0]
         connection.view.graphics_item.setParentItem(self.graphics_item)
-        # connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
         connection.view.set_pos(QPoint(-5, -5))
 
 
@@ -133,17 +136,14 @@ class SplitterView(ModuleView):
     def set_connections(self):
         connection = self.model.inlet_connections[0]
         connection.view.graphics_item.setParentItem(self.graphics_item)
-        # connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
         connection.view.set_pos(QPoint(-5, 37))
 
         connection = self.model.outlet_connections[0]
         connection.view.graphics_item.setParentItem(self.graphics_item)
-        # connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
         connection.view.set_pos(QPoint(36, -4))
 
         connection = self.model.outlet_connections[1]
         connection.view.graphics_item.setParentItem(self.graphics_item)
-        # connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
         connection.view.set_pos(QPoint(36, 78))
 
 
@@ -154,15 +154,12 @@ class JoinerView(ModuleView):
     def set_connections(self):
         connection = self.model.inlet_connections[0]
         connection.view.graphics_item.setParentItem(self.graphics_item)
-        # connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
         connection.view.set_pos(QPoint(-5, 36))
 
         connection = self.model.inlet_connections[1]
         connection.view.graphics_item.setParentItem(self.graphics_item)
-        # connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
         connection.view.set_pos(QPoint(37, -5))
 
         connection = self.model.outlet_connections[0]
         connection.view.graphics_item.setParentItem(self.graphics_item)
-        # connection.view.graphics_item = QGraphicsPixmapItem(connection.view.pixmap, self.graphics_item)
         connection.view.set_pos(QPoint(78, 36))

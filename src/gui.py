@@ -36,7 +36,7 @@ class ApplicationWindow(QMainWindow):
     def initUI(self):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.state = self.idle
+        self.state = ApplicationWindow.idle
         self.scene = QGraphicsScene(self)
         self.scene.setSceneRect(QRectF(0, 0, self.ui.graphicsView.width(), self.ui.graphicsView.height()))
         self.ui.graphicsView.setScene(self.scene)   
@@ -74,19 +74,19 @@ class ApplicationWindow(QMainWindow):
         if event.type() == QEvent.HoverMove and source is self:
             self.mouse_x = event.pos().x()
             self.mouse_y = event.pos().y()
-            if self.state is self.placing_module:
+            if self.state is ApplicationWindow.placing_module:
                 width = self.floating_model.view.graphics_item.pixmap().width()
                 height = self.floating_model.view.graphics_item.pixmap().height()
                 self.floating_model.view.graphics_item.setPos(self.map_from_global_to_scene(QPoint(self.mouse_x - width, self.mouse_y - height)))
-            elif self.state is self.placing_stream or self.state is self.placing_readout:
+            elif self.state is ApplicationWindow.placing_stream or self.state is self.placing_readout:
                 width = self.floating_model.view.graphics_item.rect().width()
                 height = self.floating_model.view.graphics_item.rect().height()
                 self.floating_model.view.graphics_item.setPos(self.map_from_global_to_scene(QPoint(self.mouse_x - width / 2, self.mouse_y - height / 2)))
-            elif self.state is self.drawing_stream:
+            elif self.state is ApplicationWindow.drawing_stream:
                 p1 = self.floating_line.line().p1()
                 p2 = self.map_from_global_to_scene(QPoint(self.mouse_x, self.mouse_y))
                 self.floating_line.setLine(QLineF(p1, p2))
-            elif self.state is self.drawing_readout:
+            elif self.state is ApplicationWindow.drawing_readout:
                 p1 = self.floating_line.mapToScene(self.floating_line.line().p1()) 
 
                 width = self.floating_model.view.graphics_item.rect().width()
@@ -106,15 +106,15 @@ class ApplicationWindow(QMainWindow):
         return pos
 
     def mousePressEvent(self, event):
-        if self.state is self.placing_module:
+        if self.state is ApplicationWindow.placing_module:
             self.place_module()
-        elif self.state is self.drawing_stream:
+        elif self.state is ApplicationWindow.drawing_stream:
             self.complete_stream(self.map_from_global_to_scene(event.pos()))
-        elif self.state is self.placing_stream:
+        elif self.state is ApplicationWindow.placing_stream:
             self.start_stream(self.map_from_global_to_scene(event.pos()))
-        elif self.state is self.drawing_readout:
+        elif self.state is ApplicationWindow.drawing_readout:
             self.complete_readout(self.map_from_global_to_scene(event.pos()))
-        elif self.state is self.placing_readout:
+        elif self.state is ApplicationWindow.placing_readout:
             self.start_readout(self.map_from_global_to_scene(event.pos()))
  
     @pyqtSlot()
@@ -175,7 +175,7 @@ class ApplicationWindow(QMainWindow):
                     self.floating_line.setPen(pen)
                     self.floating_line.setLine(QLineF(p1, p2))  
                     
-        if self.state is not self.drawing_stream:
+        if self.state is not ApplicationWindow.drawing_stream:
             self.state = self.idle
             self.views.remove(self.floating_model.view)
             del self.floating_model
@@ -190,17 +190,7 @@ class ApplicationWindow(QMainWindow):
         completed = False
         for colliding_item in self.scene.collidingItems(test_line_item):
             for view in self.views:
-                if isinstance(view.model, Connection) and view.graphics_item is colliding_item:
-                    # Outlet connections connect to stream inlets and vice versa
-                    # if type(view.model) is InletConnection:
-                    #     if self.floating_model.outlet_connection: # If inlet to stream already exists, this stream is invalid
-                    #         continue
-                    #     self.floating_model.add_outlet_connection(view.model)
-                    # else:
-                    #     if self.floating_model.inlet_connection: # If outlet to stream already exists, this stream is invalid
-                    #         continue
-                    #     self.floating_model.add_inlet_connection(view.model)
-                    
+                if isinstance(view.model, Connection) and view.graphics_item is colliding_item:             
                     if not self.floating_model.add_connection(view.model):
                         continue
 
@@ -220,7 +210,7 @@ class ApplicationWindow(QMainWindow):
 
         if self.floating_model and not completed:
             if self.floating_model.inlet_connection:
-                self.floating_model.remove()
+                self.floating_model.remove_connection(self.floating_model.remove_connection)
             self.views.remove(self.floating_model.view)
             del self.floating_model
             self.scene.removeItem(self.floating_line)
@@ -265,7 +255,7 @@ class ApplicationWindow(QMainWindow):
                     self.floating_line.setPen(pen)
                     self.floating_line.setZValue(-1)
 
-        if self.state is not self.drawing_readout:
+        if self.state is not ApplicationWindow.drawing_readout:
             self.state = self.idle
             self.views.remove(self.floating_model.view)
             self.scene.removeItem(self.floating_model.view.graphics_item)
