@@ -5,6 +5,7 @@ More blocks
 Comments
 Save and load
 Start stream by clicking any connection without a stream
+Refactor creating, drawing, and completion of streams and readouts
 
 Considerations:
 - Refactor Multiline class into helper functions
