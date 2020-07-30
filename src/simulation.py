@@ -6,13 +6,13 @@ from .species import State
 class Simulation:
     def __init__(self, gui):
         self.gui = gui
-        Event.register_species([('water', State.liquid), ('wood fiber', State.solid)])
+        Event.register_species([('water', State.liquid), ('fiber', State.solid)])
         self.iteration = 1
         self.modules = []
         self.displays = []
 
     def run(self):
-        print(f'Iteration {self.iteration}, {Event.count} events\n')
+        # print(f'Iteration {self.iteration}, {Event.count} events accumulated')
         for module in self.modules:
             module.process()
 

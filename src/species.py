@@ -36,8 +36,8 @@ liquids_dict = {
 }
 
 solids_dict = {
-    'wood fiber': {
-        'name': 'wood fiber',
+    'fiber': {
+        'name': 'fiber',
         'density': 1.2
     }
 }

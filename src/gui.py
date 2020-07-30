@@ -6,7 +6,7 @@ from PyQt5.QtCore import QTimer, pyqtSlot, QEvent, Qt, QLineF, QPoint, QPointF, 
 
 from .simulation import Simulation
 from .main_window import Ui_MainWindow
-from .models import Source, Sink, Stream, Connection, Joiner, Splitter, Readout
+from .models import Source, Sink, Stream, Connection, InletConnection, OutletConnection, Joiner, Splitter, Readout
 from .views import StreamView, ReadoutView
 
 
@@ -164,7 +164,8 @@ class ApplicationWindow(QMainWindow):
         self.scene.removeItem(self.floating_model.view.graphics_item)
         for colliding_item in self.scene.collidingItems(self.floating_line):
             for view in self.views:
-                if type(view.model) is Connection and view.graphics_item is colliding_item:
+                if isinstance(view.model, Connection) and view.graphics_item is colliding_item:
+                    self.floating_model.add_connection(view.model)
                     self.state = self.drawing_stream
                     p1 = QPointF(colliding_item.scenePos().x() + colliding_item.boundingRect().width() / 2 - 1, 
                                  colliding_item.scenePos().y() + colliding_item.boundingRect().height() / 2 - 1)
@@ -173,8 +174,7 @@ class ApplicationWindow(QMainWindow):
                     pen.setWidth(2)
                     self.floating_line.setPen(pen)
                     self.floating_line.setLine(QLineF(p1, p2))  
-                    self.floating_model.add_inlet_connection(view.model)
-
+                    
         if self.state is not self.drawing_stream:
             self.state = self.idle
             self.views.remove(self.floating_model.view)
@@ -190,14 +190,26 @@ class ApplicationWindow(QMainWindow):
         completed = False
         for colliding_item in self.scene.collidingItems(test_line_item):
             for view in self.views:
-                if type(view.model) is Connection and view.graphics_item is colliding_item:
+                if isinstance(view.model, Connection) and view.graphics_item is colliding_item:
+                    # Outlet connections connect to stream inlets and vice versa
+                    # if type(view.model) is InletConnection:
+                    #     if self.floating_model.outlet_connection: # If inlet to stream already exists, this stream is invalid
+                    #         continue
+                    #     self.floating_model.add_outlet_connection(view.model)
+                    # else:
+                    #     if self.floating_model.inlet_connection: # If outlet to stream already exists, this stream is invalid
+                    #         continue
+                    #     self.floating_model.add_inlet_connection(view.model)
+                    
+                    if not self.floating_model.add_connection(view.model):
+                        continue
+
                     p1 = QPointF(colliding_item.scenePos().x() + colliding_item.boundingRect().width() / 2 - 1, 
                                  colliding_item.scenePos().y() + colliding_item.boundingRect().height() / 2 - 1)
                     p2 = self.floating_line.line().p1()
                     self.scene.removeItem(self.floating_line)
                     self.floating_line.setLine(QLineF(p1, p2)) 
                     self.floating_model.view.graphics_item = self.floating_line
-                    self.floating_model.add_outlet_connection(view.model)
                     self.floating_model.view.multiline = Multiline(self.scene, self.floating_line.line())
                     self.floating_model.view.multiline.snap_single_line()
                     self.floating_model = None
@@ -207,6 +219,8 @@ class ApplicationWindow(QMainWindow):
         self.scene.removeItem(test_line_item)
 
         if self.floating_model and not completed:
+            if self.floating_model.inlet_connection:
+                self.floating_model.remove()
             self.views.remove(self.floating_model.view)
             del self.floating_model
             self.scene.removeItem(self.floating_line)

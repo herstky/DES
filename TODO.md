@@ -4,7 +4,7 @@ Pull flow
 More blocks
 Comments
 Save and load
-Rework connections into inlet and outlet connections
+Start stream by clicking any connection without a stream
 
 Considerations:
 - Refactor Multiline class into helper functions
