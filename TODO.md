@@ -1,6 +1,5 @@
 Refactor Module capacities
 Refactor Module event transfers to methods
-Pull flow
 More blocks
 Comments
 Save and load
@@ -8,9 +7,11 @@ Start stream by clicking any connection without a stream
 Refactor creating, drawing, and completion of streams and readouts
 - Should only have one floating object
 Event system should be fully encapsulated
-Source modules should add events to own queue then transfer out?
+- Abstract event generation and destruction away from Modules
+    - source transfers a volume to its outlet connection, outlet connection generates new events
 
 Considerations:
 - Refactor Multiline class into helper functions
 - Remove floating_line member from gui
     - Set fragmented lines as chains of parent->child QGraphicsItems
+- Change event.volume member to magnitude to be more general

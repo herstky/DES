@@ -82,7 +82,7 @@ class Stream(Model):
 
 
 class Connection(Model):
-    def __init__(self, gui, name='Connection', module=None, capacity=float('inf')): # TODO swap name and module
+    def __init__(self, gui, module, capacity=float('inf'), name='Connection'): 
         super().__init__(gui, name)
         self.module = module
         self.capacity = capacity
@@ -99,7 +99,7 @@ class Connection(Model):
             return None
 
     def transfer_events(self, amount=0):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def connect(self, stream):
         self.stream = stream
@@ -122,8 +122,8 @@ class Connection(Model):
         pass
 
 class InletConnection(Connection):
-    def __init__(self, gui, name='Connection', module=None, capacity=float('inf')):
-        super().__init__(gui, name, module, capacity)
+    def __init__(self, gui, module, capacity=float('inf'), name='Inlet'):
+        super().__init__(gui, module, capacity, name)
 
     def transfer_events(self, flow=0):
         transferred_flow = 0
@@ -140,8 +140,8 @@ class InletConnection(Connection):
 
 
 class PushInletConnection(InletConnection):
-    def __init__(self, gui, name='Connection', module=None, capacity=float('inf')):
-        super().__init__(gui, name, module, capacity)
+    def __init__(self, gui, module, capacity=float('inf'), name='Inlet'):
+        super().__init__(gui, module, capacity, name)
  
     def connect(self, stream):
         if stream.outlet_connection or stream.inlet_connection and not isinstance(stream.inlet_connection, PushOutletConnection):
@@ -149,8 +149,8 @@ class PushInletConnection(InletConnection):
         return super().connect(stream)
 
 class PullInletConnection(InletConnection):
-    def __init__(self, gui, name='Connection', module=None, capacity=float('inf')):
-        super().__init__(gui, name, module, capacity)
+    def __init__(self, gui, module, capacity=float('inf'), name='Inlet'):
+        super().__init__(gui, module, capacity, name)
 
     def connect(self, stream):
         if stream.outlet_connection or stream.inlet_connection and not isinstance(stream.inlet_connection, PullOutletConnection):
@@ -172,11 +172,12 @@ class PullInletConnection(InletConnection):
                 self.stream.flowrates[species] += event.species_volume(species)
 
 
-class OutletConnection(Connection):
-    def __init__(self, gui, name='Connection', module=None, capacity=float('inf')):
-        super().__init__(gui, name, module, capacity)
 
-    def transfer_events(self, flow=0):
+class OutletConnection(Connection):
+    def __init__(self, gui, module, capacity=float('inf'), name='Outlet'):
+        super().__init__(gui, module, capacity, name)
+
+    def transfer_events(self, flow=0, flow_fractions={}):
         transferred_flow = 0
         if flow == 0:
             flow_capacity = self.capacity
@@ -184,6 +185,10 @@ class OutletConnection(Connection):
             flow_capacity = min(flow, self.capacity)
         while not self.module.queue.empty() and transferred_flow + self.module.queue.peek().aggregate_volume() <= flow_capacity:
             event = self.module.queue.dequeue()
+            for species in event.registered_species:
+                if species in flow_fractions:
+                    flow_fraction = flow_fractions[species]
+                    event.split_species_volume(species, flow_fraction)
             self.queue.enqueue(event)
             transferred_flow += event.aggregate_volume()
 
@@ -191,8 +196,8 @@ class OutletConnection(Connection):
 
 
 class PushOutletConnection(OutletConnection):
-    def __init__(self, gui, name='Connection', module=None, capacity=float('inf')):
-        super().__init__(gui, name, module, capacity)
+    def __init__(self, gui, module, capacity=float('inf'), name='Outlet'):
+        super().__init__(gui, module, capacity, name)
 
     def connect(self, stream):
         if stream.inlet_connection or stream.outlet_connection and not isinstance(stream.outlet_connection, PushInletConnection):
@@ -212,8 +217,8 @@ class PushOutletConnection(OutletConnection):
                 self.stream.flowrates[species] += event.species_volume(species)
 
 class PullOutletConnection(OutletConnection):
-    def __init__(self, gui, name='Connection', module=None, capacity=float('inf')):
-        super().__init__(gui, name, module, capacity)
+    def __init__(self, gui, module, capacity=float('inf'), name='Outlet'):
+        super().__init__(gui, module, capacity, name)
         # self.flow_demand = 0
 
     def connect(self, stream):
@@ -246,7 +251,7 @@ class Module(Model):
             inlet_connection.pull()
 
     def process(self):
-        pass
+        raise NotImplementedError
         
     def postprocess(self):
         for outlet_connection in self.outlet_connections:
@@ -261,7 +266,7 @@ class Module(Model):
 class Source(Module):
     def __init__(self, gui, name='Source', outlet_capacity=10000, volumetric_fractions=None, event_rate=1000):
         super().__init__(gui, name)
-        self.add_outlet_connection(PushOutletConnection(self.gui, 'Outlet', self, outlet_capacity))
+        self.add_outlet_connection(PushOutletConnection(self.gui, self, outlet_capacity))
         self.volumetric_fractions = volumetric_fractions
         self.event_rate = event_rate
         self.view = SourceView(self)
@@ -289,7 +294,7 @@ class Source(Module):
 class Tank(Module):
     def __init__(self, gui, name='Tank', outlet_capacity=float('inf'), volumetric_fractions=None, event_rate=1000):
         super().__init__(gui, name)
-        self.add_outlet_connection(PullOutletConnection(self.gui, 'Outlet', self, outlet_capacity))
+        self.add_outlet_connection(PullOutletConnection(self.gui, self, outlet_capacity))
         self.volumetric_fractions = volumetric_fractions
         self.event_rate = event_rate
         self.view = TankView(self)
@@ -317,8 +322,8 @@ class Tank(Module):
 class Pump(Module): 
     def __init__(self, gui, name='Pump', inlet_capacity=5000):
         super().__init__(gui, name)
-        self.add_inlet_connection(PullInletConnection(self.gui, 'Inlet', self, inlet_capacity))
-        self.add_outlet_connection(PushOutletConnection(self.gui, 'Outlet', self))
+        self.add_inlet_connection(PullInletConnection(self.gui, self, inlet_capacity))
+        self.add_outlet_connection(PushOutletConnection(self.gui, self))
         self.view = PumpView(self)
 
     def process(self):
@@ -332,7 +337,7 @@ class Pump(Module):
 class Sink(Module):
     def __init__(self, gui, name='Sink', inlet_capacity=float('inf')):
         super().__init__(gui, name)
-        self.add_inlet_connection(PushInletConnection(self.gui, 'Inlet', self, inlet_capacity))
+        self.add_inlet_connection(PushInletConnection(self.gui, self, inlet_capacity))
         self.view = SinkView(self)
 
     def process(self):
@@ -345,9 +350,9 @@ class Splitter(Module):
     def __init__(self, gui, name='Splitter', inlet_capacity=float('inf'), split_fraction=.5):
         super().__init__(gui, name)
         self.split_fraction = split_fraction
-        self.add_inlet_connection(PushInletConnection(self.gui, 'Inlet', self, inlet_capacity))
-        self.add_outlet_connection(PushOutletConnection(self.gui, 'Outlet1', self, inlet_capacity * split_fraction))
-        self.add_outlet_connection(PushOutletConnection(self.gui, 'Outlet2', self, inlet_capacity * (1 - split_fraction)))
+        self.add_inlet_connection(PushInletConnection(self.gui, self, inlet_capacity))
+        self.add_outlet_connection(PushOutletConnection(self.gui, self, inlet_capacity * split_fraction, 'Outlet1'))
+        self.add_outlet_connection(PushOutletConnection(self.gui, self, inlet_capacity * (1 - split_fraction), 'Outlet2'))
         self.view = SplitterView(self)
 
     def process(self):
@@ -362,12 +367,20 @@ class Splitter(Module):
         outlet_amount2 = outlet_connection2.transfer_events(inlet_amount * (1 - self.split_fraction))
 
 
+class Hyrdocyclone(Module):
+    def __init__(self, gui, name='Hyrdocyclone', inlet_capacity=10000):
+        super().__init__(gui, name)
+
+    def process(self):
+        pass
+
+
 class Joiner(Module):
     def __init__(self, gui, name='Joiner', inlet_capacity1=50000, inlet_capacity2=50000):
         super().__init__(gui, name)
-        self.add_inlet_connection(PushInletConnection(self.gui, 'Inlet1', self, inlet_capacity1))
-        self.add_inlet_connection(PushInletConnection(self.gui, 'Inlet2', self, inlet_capacity2))
-        self.add_outlet_connection(PushOutletConnection(self.gui, 'Outlet', self, inlet_capacity1 + inlet_capacity2))
+        self.add_inlet_connection(PushInletConnection(self.gui, self, inlet_capacity1, 'Inlet1'))
+        self.add_inlet_connection(PushInletConnection(self.gui, self, inlet_capacity2, 'Inlet2'))
+        self.add_outlet_connection(PushOutletConnection(self.gui, self, inlet_capacity1 + inlet_capacity2))
         self.view = JoinerView(self)
 
     def process(self):
