@@ -6,7 +6,7 @@ from PyQt5.QtCore import QTimer, pyqtSlot, QEvent, Qt, QLineF, QPoint, QPointF, 
 
 from .simulation import Simulation
 from .main_window import Ui_MainWindow
-from .models import Source, Sink, Stream, Connection, InletConnection, OutletConnection, Joiner, Splitter, Readout
+from .models import Source, Tank, Pump, Sink, Stream, Connection, Joiner, Splitter, Readout
 from .views import StreamView, ReadoutView
 
 
@@ -45,15 +45,17 @@ class ApplicationWindow(QMainWindow):
 
         self.views = []
         self.simulation = Simulation(self)
-
+       
         self.timer = QTimer()
         self.timer.setInterval(100)
         self.timer.timeout.connect(self.simulation.run)
 
-        self.ui.actionStart.triggered.connect(self.timer.start)
-        self.ui.actionStop.triggered.connect(self.timer.stop)
+        self.ui.actionStart.triggered.connect(self.run_sim)
+        self.ui.actionStop.triggered.connect(self.stop_sim)
         self.ui.actionStream.triggered.connect(self.create_stream)
         self.ui.actionSource.triggered.connect(self.create_source)
+        self.ui.actionTank.triggered.connect(self.create_tank)
+        self.ui.actionPump.triggered.connect(self.create_pump)
         self.ui.actionSink.triggered.connect(self.create_sink)
         self.ui.actionSplitter.triggered.connect(self.create_splitter)
         self.ui.actionJoiner.triggered.connect(self.create_joiner)
@@ -62,11 +64,10 @@ class ApplicationWindow(QMainWindow):
         self.setMouseTracking(True)
         self.ui.centralwidget.setMouseTracking(True)
         self.ui.graphicsView.setMouseTracking(True)
-
         self.installEventFilter(self)
+
         self.mouse_x = 0
         self.mouse_y = 0
-
         self.floating_model = None
         self.floating_line = None
 
@@ -130,22 +131,38 @@ class ApplicationWindow(QMainWindow):
             self.complete_readout(scene_pos)
         elif self.state is ApplicationWindow.placing_readout:
             self.start_readout(scene_pos)
- 
+    
+    def run_sim(self):
+        self.state = ApplicationWindow.running
+        self.timer.start()
+
+    def stop_sim(self):
+        self.staet = ApplicationWindow.idle
+        self.timer.stop()
+
     @pyqtSlot()
     def create_source(self):
         self.add_module(Source(self, 'Source', 500))
 
     @pyqtSlot()
+    def create_tank(self):
+        self.add_module(Tank(self))
+
+    @pyqtSlot()
+    def create_pump(self):
+        self.add_module(Pump(self))
+
+    @pyqtSlot()
     def create_sink(self):
-        self.add_module(Sink(self, 'Sink'))
+        self.add_module(Sink(self))
 
     @pyqtSlot()
     def create_splitter(self):
-        self.add_module(Splitter(self, 'Splitter'))
+        self.add_module(Splitter(self))
 
     @pyqtSlot()
     def create_joiner(self):
-        self.add_module(Joiner(self, 'Joiner'))
+        self.add_module(Joiner(self))
 
     def add_module(self, module):
         self.state = self.placing_module

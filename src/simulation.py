@@ -14,7 +14,7 @@ class Simulation:
     def run(self):
         # print(f'Iteration {self.iteration}, {Event.count} events accumulated')
         for module in self.modules:
-            module.process()
+            module.simulate()
 
         for display in self.displays:
             display.update()

@@ -7,6 +7,8 @@ Save and load
 Start stream by clicking any connection without a stream
 Refactor creating, drawing, and completion of streams and readouts
 - Should only have one floating object
+Event system should be fully encapsulated
+Source modules should add events to own queue then transfer out?
 
 Considerations:
 - Refactor Multiline class into helper functions

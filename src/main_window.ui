@@ -78,9 +78,12 @@
       <string>Block</string>
      </property>
      <addaction name="actionSource"/>
+     <addaction name="actionTank"/>
+     <addaction name="actionPump"/>
      <addaction name="actionSink"/>
      <addaction name="actionSplitter"/>
      <addaction name="actionJoiner"/>
+     <addaction name="actionReadout"/>
     </widget>
     <addaction name="menuBlock"/>
     <addaction name="actionStream"/>
@@ -149,6 +152,8 @@
    </attribute>
    <addaction name="actionStream"/>
    <addaction name="actionSource"/>
+   <addaction name="actionTank"/>
+   <addaction name="actionPump"/>
    <addaction name="actionSink"/>
    <addaction name="actionSplitter"/>
    <addaction name="actionJoiner"/>
@@ -231,6 +236,16 @@
   <action name="actionReadout">
    <property name="text">
     <string>Readout</string>
+   </property>
+  </action>
+  <action name="actionTank">
+   <property name="text">
+    <string>Tank</string>
+   </property>
+  </action>
+  <action name="actionPump">
+   <property name="text">
+    <string>Pump</string>
    </property>
   </action>
  </widget>

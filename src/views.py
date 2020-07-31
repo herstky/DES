@@ -66,16 +66,16 @@ class StreamView(View):
 class ConnectionView(View):
     def __init__(self, model):
         super().__init__(model)
-        if self.model.flow_type is models.Connection.push_flow:
+        if isinstance(self.model, models.PushInletConnection) or isinstance(self.model, models.PushOutletConnection):
             self.graphics_item = QGraphicsRectItem(0, 0, 15, 15)
             self.graphics_item.setBrush(Qt.black)
 
             inner_rect_item = QGraphicsRectItem(1, 1, 13, 13, self.graphics_item)
             inner_rect_item.setBrush(Qt.white)
 
-            self.est_conn_item = QGraphicsRectItem(4, 4, 7, 7, inner_rect_item)
-            self.est_conn_item.setBrush(Qt.red)
-            self.est_conn_item.setOpacity(0.3)
+            self.connection_marker_item = QGraphicsRectItem(4, 4, 7, 7, inner_rect_item)
+            self.connection_marker_item.setBrush(Qt.red)
+            self.connection_marker_item.setOpacity(0.3)
         else:
             self.graphics_item = QGraphicsEllipseItem(0, 0, 15, 15)
             self.graphics_item.setBrush(Qt.black)
@@ -83,18 +83,18 @@ class ConnectionView(View):
             inner_circle_item = QGraphicsEllipseItem(1, 1, 13, 13, self.graphics_item)
             inner_circle_item.setBrush(Qt.white)
 
-            self.est_conn_item = QGraphicsEllipseItem(4, 4, 7, 7, inner_red_circle)
-            self.est_conn_item.setBrush(Qt.red)
-            self.est_conn_item.setOpacity(0.3)
+            self.connection_marker_item = QGraphicsEllipseItem(4, 4, 7, 7, inner_circle_item)
+            self.connection_marker_item.setBrush(Qt.red)
+            self.connection_marker_item.setOpacity(0.3)
 
     def set_pos(self, pos):
         self.graphics_item.setPos(pos)
 
     def set_connected(self, connected):
         if connected:
-            self.est_conn_item.setBrush(Qt.green)
+            self.connection_marker_item.setBrush(Qt.green)
         else:
-            self.est_conn_item.setBrush(Qt.red)
+            self.connection_marker_item.setBrush(Qt.red)
 
 class ModuleView(View):
     def __init__(self, model, image_path):
@@ -118,6 +118,28 @@ class SourceView(ModuleView):
         connection.view.graphics_item.setParentItem(self.graphics_item)
         connection.view.set_pos(QPoint(87, 17))
 
+
+class TankView(ModuleView):
+    def __init__(self, model):
+        super().__init__(model, 'assets/source.png')
+
+    def set_connections(self):
+        connection = self.model.outlet_connections[0]
+        connection.view.graphics_item.setParentItem(self.graphics_item)
+        connection.view.set_pos(QPoint(87, 17))
+
+class PumpView(ModuleView):
+    def __init__(self, model):
+        super().__init__(model, 'assets/sink.png')
+
+    def set_connections(self):
+        connection = self.model.inlet_connections[0]
+        connection.view.graphics_item.setParentItem(self.graphics_item)
+        connection.view.set_pos(QPoint(-5, -5))
+
+        connection = self.model.outlet_connections[0]
+        connection.view.graphics_item.setParentItem(self.graphics_item)
+        connection.view.set_pos(QPoint(37, -5))
 
 class SinkView(ModuleView):
     def __init__(self, model):
