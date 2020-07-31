@@ -170,7 +170,6 @@ class PullInletConnection(InletConnection):
             pulled_amount += event.aggregate_volume()
             for species in event.registered_species:
                 self.stream.flowrates[species] += event.species_volume(species)
-        # self.mate.flow_demand += self.capacity - pulled_amount
 
 
 class OutletConnection(Connection):
@@ -269,7 +268,7 @@ class Source(Module):
 
     def process(self):
         connection = self.outlet_connections[0]
-        generated_amount = 0
+        outlet_amount = 0
         for i in range(self.event_rate):
             volume = connection.capacity / self.event_rate
             species = []
@@ -284,7 +283,7 @@ class Source(Module):
 
             # Create events at outlet connection
             connection.queue.enqueue(Event(species))
-            generated_amount += volume
+            outlet_amount += volume
 
 
 class Tank(Module):
@@ -297,7 +296,7 @@ class Tank(Module):
 
     def process(self):
         connection = self.outlet_connections[0]
-        generated_amount = 0
+        outlet_amount = 0
         flow_demand = connection.capacity
         for i in range(self.event_rate):
             volume = flow_demand / self.event_rate
@@ -312,7 +311,7 @@ class Tank(Module):
                     species.append((species_name, state, fraction * volume))
         
             connection.queue.enqueue(Event(species))
-            generated_amount += volume
+            outlet_amount += volume
         
         
 class Pump(Module): 
@@ -327,7 +326,7 @@ class Pump(Module):
         outlet_connection1 = self.outlet_connections[0]
 
         inlet_amount = inlet_connection.transfer_events()
-        split_amount1 = outlet_connection1.transfer_events()
+        outlet_amount = outlet_connection1.transfer_events()
 
 
 class Sink(Module):
@@ -359,8 +358,8 @@ class Splitter(Module):
         inlet_amount = inlet_connection.transfer_events()
 
         # Transfer events to outlet streams
-        split_amount1 = outlet_connection1.transfer_events(self.queue.amount_queued * self.split_fraction)
-        split_amount2 = outlet_connection2.transfer_events(self.queue.amount_queued)
+        outlet_amount1 = outlet_connection1.transfer_events(inlet_amount * self.split_fraction)
+        outlet_amount2 = outlet_connection2.transfer_events(inlet_amount * (1 - self.split_fraction))
 
 
 class Joiner(Module):
@@ -380,4 +379,4 @@ class Joiner(Module):
         inlet_amount2 = inlet_connection2.transfer_events()
 
         # Transfer events to outlet streams
-        joined_amount = outlet_connection1.transfer_events()
+        outlet_amount = outlet_connection1.transfer_events()
