@@ -6,7 +6,7 @@ from PyQt5.QtCore import QTimer, pyqtSlot, QEvent, Qt, QLineF, QPoint, QPointF, 
 
 from .simulation import Simulation
 from .main_window import Ui_MainWindow
-from .models import Source, Tank, Pump, Sink, Stream, Connection, Joiner, Splitter, Readout
+from .models import Source, Tank, Pump, Sink, Stream, Connection, Splitter, Hydrocyclone, Joiner, Readout
 from .views import StreamView, ReadoutView
 
 
@@ -34,6 +34,8 @@ class ApplicationWindow(QMainWindow):
         self.initUI()
  
     def initUI(self):
+        self.mouse_x = 0
+        self.mouse_y = 0
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.state = ApplicationWindow.idle
@@ -52,13 +54,14 @@ class ApplicationWindow(QMainWindow):
 
         self.ui.actionStart.triggered.connect(self.run_sim)
         self.ui.actionStop.triggered.connect(self.stop_sim)
-        self.ui.actionStream.triggered.connect(self.create_stream)
-        self.ui.actionSource.triggered.connect(self.create_source)
-        self.ui.actionTank.triggered.connect(self.create_tank)
-        self.ui.actionPump.triggered.connect(self.create_pump)
-        self.ui.actionSink.triggered.connect(self.create_sink)
-        self.ui.actionSplitter.triggered.connect(self.create_splitter)
-        self.ui.actionJoiner.triggered.connect(self.create_joiner)
+        self.ui.actionStream.triggered.connect(self.create_stream_slot)
+        self.ui.actionSource.triggered.connect(self.create_source_slot)
+        self.ui.actionTank.triggered.connect(self.create_tank_slot)
+        self.ui.actionPump.triggered.connect(self.create_pump_slot)
+        self.ui.actionSink.triggered.connect(self.create_sink_slot)
+        self.ui.actionSplitter.triggered.connect(self.create_splitter_slot)
+        self.ui.actionHydrocyclone.triggered.connect(self.create_hydrocyclone_slot)
+        self.ui.actionJoiner.triggered.connect(self.create_joiner_slot)
         self.ui.actionReadout.triggered.connect(self.create_readout)
 
         self.setMouseTracking(True)
@@ -66,8 +69,6 @@ class ApplicationWindow(QMainWindow):
         self.ui.graphicsView.setMouseTracking(True)
         self.installEventFilter(self)
 
-        self.mouse_x = 0
-        self.mouse_y = 0
         self.floating_model = None
         self.floating_line = None
 
@@ -85,10 +86,10 @@ class ApplicationWindow(QMainWindow):
         return QPoint(point.x() + dx, point.y() + dy)
 
     def remove_floating_objects(self):
-            self.views.remove(self.floating_model.view)
-            del self.floating_model
-            self.scene.removeItem(self.floating_line)
-            self.floating_line = None
+        self.views.remove(self.floating_model.view)
+        del self.floating_model
+        self.scene.removeItem(self.floating_line)
+        self.floating_line = None
 
     def eventFilter(self, source, event):
         if event.type() == QEvent.HoverMove and source is self:
@@ -121,7 +122,9 @@ class ApplicationWindow(QMainWindow):
 
     def mousePressEvent(self, event):
         scene_pos = self.map_from_global_to_scene(event.pos())
-        if self.state is ApplicationWindow.placing_module:
+        if self.state is ApplicationWindow.idle:
+            pass
+        elif self.state is ApplicationWindow.placing_module:
             self.place_module()
         elif self.state is ApplicationWindow.drawing_stream:
             self.complete_stream(scene_pos)
@@ -141,29 +144,37 @@ class ApplicationWindow(QMainWindow):
         self.timer.stop()
 
     @pyqtSlot()
-    def create_source(self):
+    def create_source_slot(self):
         self.add_module(Source(self, 'Source', 500))
 
     @pyqtSlot()
-    def create_tank(self):
+    def create_tank_slot(self):
         self.add_module(Tank(self))
 
     @pyqtSlot()
-    def create_pump(self):
+    def create_pump_slot(self):
         self.add_module(Pump(self))
 
     @pyqtSlot()
-    def create_sink(self):
+    def create_sink_slot(self):
         self.add_module(Sink(self))
 
     @pyqtSlot()
-    def create_splitter(self):
+    def create_splitter_slot(self):
         self.add_module(Splitter(self))
 
     @pyqtSlot()
-    def create_joiner(self):
+    def create_hydrocyclone_slot(self):
+        self.add_module(Hydrocyclone(self))
+
+    @pyqtSlot()
+    def create_joiner_slot(self):
         self.add_module(Joiner(self))
 
+    @pyqtSlot()
+    def create_stream_slot(self):
+        self.create_stream()
+            
     def add_module(self, module):
         self.state = self.placing_module
         module.view.add_to_scene(self.scene)
@@ -176,7 +187,6 @@ class ApplicationWindow(QMainWindow):
         self.state = self.idle
         self.floating_model = None
 
-    @pyqtSlot()
     def create_stream(self):
         self.state = self.placing_stream
         self.floating_model = Stream(self)

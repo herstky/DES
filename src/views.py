@@ -63,6 +63,7 @@ class StreamView(View):
         super().__init__(model)
         self.multiline = multiline        
 
+
 class ConnectionView(View):
     def __init__(self, model):
         super().__init__(model)
@@ -168,6 +169,23 @@ class SplitterView(ModuleView):
         connection.view.graphics_item.setParentItem(self.graphics_item)
         connection.view.set_pos(QPoint(36, 78))
 
+
+class HydrocycloneView(ModuleView):
+    def __init__(self, model):
+        super().__init__(model, 'assets/splitter.png')
+
+    def set_connections(self):
+        connection = self.model.inlet_connections[0]
+        connection.view.graphics_item.setParentItem(self.graphics_item)
+        connection.view.set_pos(QPoint(-5, 37))
+
+        connection = self.model.outlet_connections[0]
+        connection.view.graphics_item.setParentItem(self.graphics_item)
+        connection.view.set_pos(QPoint(36, -4))
+
+        connection = self.model.outlet_connections[1]
+        connection.view.graphics_item.setParentItem(self.graphics_item)
+        connection.view.set_pos(QPoint(36, 78))
 
 class JoinerView(ModuleView):
     def __init__(self, model):

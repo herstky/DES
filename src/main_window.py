@@ -91,6 +91,8 @@ class Ui_MainWindow(object):
         self.actionTank.setObjectName("actionTank")
         self.actionPump = QtWidgets.QAction(MainWindow)
         self.actionPump.setObjectName("actionPump")
+        self.actionHydrocyclone = QtWidgets.QAction(MainWindow)
+        self.actionHydrocyclone.setObjectName("actionHydrocyclone")
         self.menuFile.addAction(self.actionNew)
         self.menuFile.addAction(self.actionOpen)
         self.menuFile.addAction(self.actionSave)
@@ -100,6 +102,7 @@ class Ui_MainWindow(object):
         self.menuBlock.addAction(self.actionPump)
         self.menuBlock.addAction(self.actionSink)
         self.menuBlock.addAction(self.actionSplitter)
+        self.menuBlock.addAction(self.actionHydrocyclone)
         self.menuBlock.addAction(self.actionJoiner)
         self.menuBlock.addAction(self.actionReadout)
         self.menuInsert.addAction(self.menuBlock.menuAction())
@@ -124,6 +127,7 @@ class Ui_MainWindow(object):
         self.toolBar_3.addAction(self.actionPump)
         self.toolBar_3.addAction(self.actionSink)
         self.toolBar_3.addAction(self.actionSplitter)
+        self.toolBar_3.addAction(self.actionHydrocyclone)
         self.toolBar_3.addAction(self.actionJoiner)
         self.toolBar_3.addAction(self.actionReadout)
 
@@ -162,6 +166,7 @@ class Ui_MainWindow(object):
         self.actionReadout.setText(_translate("MainWindow", "Readout"))
         self.actionTank.setText(_translate("MainWindow", "Tank"))
         self.actionPump.setText(_translate("MainWindow", "Pump"))
+        self.actionHydrocyclone.setText(_translate("MainWindow", "Hydrocyclone"))
 
 
 if __name__ == "__main__":

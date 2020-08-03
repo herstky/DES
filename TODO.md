@@ -15,3 +15,4 @@ Considerations:
 - Remove floating_line member from gui
     - Set fragmented lines as chains of parent->child QGraphicsItems
 - Change event.volume member to magnitude to be more general
+- Convert some or all Module views to widgets

@@ -82,6 +82,7 @@
      <addaction name="actionPump"/>
      <addaction name="actionSink"/>
      <addaction name="actionSplitter"/>
+     <addaction name="actionHydrocyclone"/>
      <addaction name="actionJoiner"/>
      <addaction name="actionReadout"/>
     </widget>
@@ -156,6 +157,7 @@
    <addaction name="actionPump"/>
    <addaction name="actionSink"/>
    <addaction name="actionSplitter"/>
+   <addaction name="actionHydrocyclone"/>
    <addaction name="actionJoiner"/>
    <addaction name="actionReadout"/>
   </widget>
@@ -246,6 +248,11 @@
   <action name="actionPump">
    <property name="text">
     <string>Pump</string>
+   </property>
+  </action>
+  <action name="actionHydrocyclone">
+   <property name="text">
+    <string>Hydrocyclone</string>
    </property>
   </action>
  </widget>

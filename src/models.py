@@ -2,8 +2,9 @@ from enum import Enum
 
 from .event_queue import EventQueue
 from .event import Event
-from .views import ReadoutView, StreamView, ConnectionView, SourceView, TankView, PumpView, SinkView, SplitterView, JoinerView
+from .views import ReadoutView, StreamView, ConnectionView, SourceView, TankView, PumpView, SinkView, SplitterView, HydrocycloneView, JoinerView
 from .species import State
+
 
 
 class Model:
@@ -98,7 +99,7 @@ class Connection(Model):
         else:
             return None
 
-    def transfer_events(self, amount=0):
+    def transfer_events(self):
         raise NotImplementedError
 
     def connect(self, stream):
@@ -172,25 +173,40 @@ class PullInletConnection(InletConnection):
                 self.stream.flowrates[species] += event.species_volume(species)
 
 
-
 class OutletConnection(Connection):
     def __init__(self, gui, module, capacity=float('inf'), name='Outlet'):
         super().__init__(gui, module, capacity, name)
 
-    def transfer_events(self, flow=0, flow_fractions={}):
+    def transfer_events(self, outflow_fractions, flow=0):
         transferred_flow = 0
         if flow == 0:
             flow_capacity = self.capacity
         else:
             flow_capacity = min(flow, self.capacity)
-        while not self.module.queue.empty() and transferred_flow + self.module.queue.peek().aggregate_volume() <= flow_capacity:
-            event = self.module.queue.dequeue()
+
+        displaced_flow = {(species_name, state): 0 for species_name, state in Event.registered_species}
+        outflow = 0
+        for species in Event.registered_species:
+            species_outflow_fraction = outflow_fractions[species] 
+            species_outflow = species_outflow_fraction * self.module.queue.species_flows[species]
+            displaced_flow[species] = (1 - species_outflow_fraction) * self.module.queue.species_flows[species]
+            outflow += species_outflow
+
+        outflow_event_count = self.module.queue.events_per_volume(outflow)
+        outflow_per_event = outflow / outflow_event_count
+
+        while not self.module.queue.empty() and transferred_flow + outflow_per_event <= outflow:
+            event = self.module.queue.peek()
             for species in event.registered_species:
-                if species in flow_fractions:
-                    flow_fraction = flow_fractions[species]
-                    event.split_species_volume(species, flow_fraction)
+                species_outflow_fraction = outflow_fractions[species]
+                species_outflow = species_outflow_fraction * outflow_per_event
+                event.set_species_volume(species, species_outflow)
+                self.module.transferred_species_flows[species] += species_outflow
+            self.module.queue.dequeue()
             self.queue.enqueue(event)
-            transferred_flow += event.aggregate_volume()
+            transferred_flow += outflow_per_event
+
+        self.module.queue.rebalance_event_volumes(displaced_flow)
 
         return transferred_flow
 
@@ -237,8 +253,13 @@ class Module(Model):
         self.outlet_connections = []
         self.queue = EventQueue()
 
+        self.reset_transferred_species_flows()
+
     def __del__(self):
         self.gui.simulation.modules.remove(self)
+
+    def reset_transferred_species_flows(self):
+        self.transferred_species_flows = {species: 0 for species in Event.registered_species}
 
     def add_inlet_connection(self, connection):
         self.inlet_connections.append(connection)
@@ -247,6 +268,7 @@ class Module(Model):
         self.outlet_connections.append(connection)
 
     def preprocess(self):
+        self.reset_transferred_species_flows()
         for inlet_connection in self.inlet_connections:
             inlet_connection.pull()
 
@@ -347,13 +369,42 @@ class Sink(Module):
 
 
 class Splitter(Module):
-    def __init__(self, gui, name='Splitter', inlet_capacity=float('inf'), split_fraction=.5):
+    def __init__(self, gui, name='Splitter', inlet_capacity=float('inf'), split_fraction=.25):
         super().__init__(gui, name)
         self.split_fraction = split_fraction
         self.add_inlet_connection(PushInletConnection(self.gui, self, inlet_capacity))
-        self.add_outlet_connection(PushOutletConnection(self.gui, self, inlet_capacity * split_fraction, 'Outlet1'))
-        self.add_outlet_connection(PushOutletConnection(self.gui, self, inlet_capacity * (1 - split_fraction), 'Outlet2'))
+        self.add_outlet_connection(PushOutletConnection(self.gui, self, name='Outlet1'))
+        self.add_outlet_connection(PushOutletConnection(self.gui, self, name='Outlet2'))
         self.view = SplitterView(self)
+
+    def process(self):
+        inlet_connection = self.inlet_connections[0]
+        outlet_connection1, outlet_connection2 = self.outlet_connections
+
+        # Transfer events to Splitter for processing
+        inlet_flow = inlet_connection.transfer_events()
+
+        outlet_flow_fractions1 = {}
+        outlet_flow_fractions2 = {}
+        # need to split the events here
+        for species_name, state in Event.registered_species:
+            outlet_flow_fractions1[(species_name, state)] = self.split_fraction
+            outlet_flow_fractions2[(species_name, state)] = (1 - self.split_fraction)
+
+        # Transfer events to outlet streams
+        outlet_amount1 = outlet_connection1.transfer_events(outlet_flow_fractions1, inlet_flow)
+        outlet_amount2 = outlet_connection2.transfer_events(outlet_flow_fractions2, inlet_flow)
+
+
+class Hydrocyclone(Module):
+    def __init__(self, gui, name='Hydrocyclone', inlet_capacity=10000, rrv=0.08, rrw=0.14):
+        super().__init__(gui, name)
+        self.rrv = rrv # Reject rate by volume
+        self.rrw = rrw # Reject rate by weight (solids only)
+        self.add_inlet_connection(PushInletConnection(self.gui, self, inlet_capacity))
+        self.add_outlet_connection(PushOutletConnection(self.gui, self, name='Outlet1'))
+        self.add_outlet_connection(PushOutletConnection(self.gui, self, name='Outlet2'))
+        self.view = HydrocycloneView(self)
 
     def process(self):
         inlet_connection = self.inlet_connections[0]
@@ -362,17 +413,20 @@ class Splitter(Module):
         # Transfer events to Splitter for processing
         inlet_amount = inlet_connection.transfer_events()
 
+        accepts = {}
+        rejects = {}
+
+        for species_name, state in Event.registered_species:
+            if species_name == 'water':
+                accepts[(species_name, state)] = 1 - self.rrv
+                rejects[(species_name, state)] = self.rrv
+            elif species_name == 'fiber' or species_name == 'filler':
+                accepts[(species_name, state)] = 1 - self.rrw
+                rejects[(species_name, state)] = self.rrw
+
         # Transfer events to outlet streams
-        outlet_amount1 = outlet_connection1.transfer_events(inlet_amount * self.split_fraction)
+        outlet_amount1 = outlet_connection1.transfer_events(inlet_amount * self.split_fraction, flow_fractions)
         outlet_amount2 = outlet_connection2.transfer_events(inlet_amount * (1 - self.split_fraction))
-
-
-class Hyrdocyclone(Module):
-    def __init__(self, gui, name='Hyrdocyclone', inlet_capacity=10000):
-        super().__init__(gui, name)
-
-    def process(self):
-        pass
 
 
 class Joiner(Module):
