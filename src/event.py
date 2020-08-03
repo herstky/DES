@@ -37,6 +37,10 @@ class Event:
 
         return total_volume
 
+    def species_volume(self, species):
+        species_name, state = species
+        return self.species[state][species_name]['volume']
+
     def set_species_volume(self, species, volume):
         species_name, state = species
         self.species[state][species_name]['volume'] = volume
@@ -49,7 +53,3 @@ class Event:
         volume = self.species_volume(species)
         self.set_species_volume(species, split_fraction * volume)
         return (split_fraction * volume, (1 - split_fraction) * volume)
-
-    def species_volume(self, species):
-        species_name, state = species
-        return self.species[state][species_name]['volume']
