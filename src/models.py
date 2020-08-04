@@ -130,10 +130,6 @@ class InletConnection(Connection):
 
     def transfer_events(self):
         transferred_flow = 0
-        # if flow == 0:
-        #     flow_capacity = self.capacity
-        # else:
-        #     flow_capacity = min(flow, self.capacity)
         while not self.queue.empty() and transferred_flow + self.queue.peek().aggregate_volume() <= self.capacity:
             event = self.queue.dequeue()
             self.module.queue.enqueue(event)
@@ -183,7 +179,6 @@ class OutletConnection(Connection):
     def set_flow_fractions(self, flow_fractions):
         self.flow_fractions = flow_fractions
 
-    # def transfer_events(self, outflow_fractions, flow=0):
     def transfer_events(self):
         if not self.flow_fractions:
             self.flow_fractions = {}
@@ -376,11 +371,7 @@ class Pump(Module):
         self.view = PumpView(self)
 
     def process(self):
-        inlet_connection = self.inlet_connections[0]
-        outlet_connection1 = self.outlet_connections[0]
-
-        inlet_amount = inlet_connection.transfer_events()
-        # outlet_amount = outlet_connection1.transfer_events()
+        pass
 
 
 class Sink(Module):
@@ -390,8 +381,6 @@ class Sink(Module):
         self.view = SinkView(self)
 
     def process(self):
-        connection = self.inlet_connections[0]
-        destroyed_amount = connection.transfer_events()
         self.queue.events.clear()
 
 
@@ -408,12 +397,6 @@ class Splitter(Module):
         inlet_connection = self.inlet_connections[0]
         outlet_connection1, outlet_connection2 = self.outlet_connections
 
-        # Transfer events to Splitter for processing
-        inlet_flow = inlet_connection.transfer_events()
-
-        self.initial_queue_length = self.queue.length()
-        self.initial_species_volumes = self.queue.species_flows # TODO this needs to be a copy, VERIFY
-
         outlet1_flow_fractions = {}
         outlet2_flow_fractions = {}
 
@@ -423,10 +406,6 @@ class Splitter(Module):
 
         outlet_connection1.set_flow_fractions(outlet1_flow_fractions)
         outlet_connection2.set_flow_fractions(outlet2_flow_fractions)
-
-        # Transfer events to outlet streams
-        # outlet_flow1 = outlet_connection1.transfer_events(outlet_flow_fractions1, inlet_flow)
-        # outlet_flow2 = outlet_connection2.transfer_events(outlet_flow_fractions2, inlet_flow)
 
 
 class Hydrocyclone(Module):
@@ -440,15 +419,6 @@ class Hydrocyclone(Module):
         self.view = HydrocycloneView(self)
 
     def process(self):
-        inlet_connection = self.inlet_connections[0]
-        accepts, rejects = self.outlet_connections
-
-        # Transfer events to Splitter for processing
-        inlet_flow = inlet_connection.transfer_events()
-
-        self.initial_queue_length = self.queue.length()
-        self.initial_species_volumes = self.queue.species_flows
-
         accept_flow_fractions = {}
         reject_flow_fractions = {}
 
@@ -461,16 +431,12 @@ class Hydrocyclone(Module):
                 accept_flow_fractions[(species_name, state)] = 1 - self.rrw
                 reject_flow_fractions[(species_name, state)] = self.rrw
 
-        # Transfer events to outlet streams
-        # outlet_flow1 = accepts.transfer_events(accepts, inlet_flow)
-        # outlet_flow2 = rejects.transfer_events(rejects, inlet_flow)
-
         accepts.set_flow_fractions(accept_flow_fractions)
         accepts.set_flow_fractions(reject_flow_fractions)
 
 
 class Joiner(Module):
-    def __init__(self, gui, name='Joiner', inlet_capacity1=50000, inlet_capacity2=50000):
+    def __init__(self, gui, name='Joiner', inlet_capacity1=float('inf'), inlet_capacity2=float('inf')):
         super().__init__(gui, name)
         self.add_inlet_connection(PushInletConnection(self.gui, self, inlet_capacity1, 'Inlet1'))
         self.add_inlet_connection(PushInletConnection(self.gui, self, inlet_capacity2, 'Inlet2'))
@@ -478,12 +444,4 @@ class Joiner(Module):
         self.view = JoinerView(self)
 
     def process(self):
-        inlet_connection1, inlet_connection2 = self.inlet_connections
-        outlet_connection1 = self.outlet_connections[0]
-
-        # Transfer events to Splitter for processing        
-        inlet_amount1 = inlet_connection1.transfer_events()
-        inlet_amount2 = inlet_connection2.transfer_events()
-
-        # Transfer events to outlet streams
-        # outlet_amount = outlet_connection1.transfer_events()
+        pass
