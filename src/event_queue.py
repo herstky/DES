@@ -5,20 +5,14 @@ from .event import Event
 class EventQueue:
     def __init__(self):
         self.events = deque()
-        # self.species_flows = {species: 0 for species in Event.registered_species}
 
     def peek(self):
         return self.events[0]
 
     def enqueue(self, event):
-        # for species in Event.registered_species:
-            # self.species_flows[species] += event.species_volume(species)
         self.events.append(event)
 
     def dequeue(self):
-        # event = 
-        # for species in Event.registered_species:
-            # self.species_flows[species] -= event.species_volume(species)
         return self.events.popleft()
 
     def length(self):
@@ -38,7 +32,6 @@ class EventQueue:
             return 0
 
     def rebalance(self, displaced_volumes):
-        # self.species_flows = {species: 0 for species in Event.registered_species}
         for event in self.events:
             for species in Event.registered_species:
                 displaced_species_volume_per_event = displaced_volumes[species] / self.length()
