@@ -260,6 +260,13 @@ class Module(Model):
     def __del__(self):
         self.gui.simulation.modules.remove(self)
  
+    def generate_flow(self, connection, species_flows):
+        connection.queue.enqueue(Event(species_flows))
+
+
+    def purge_flow(self):
+        self.queue.events.clear()
+
     def add_inlet_connection(self, connection):
         self.inlet_connections.append(connection)
 
@@ -333,7 +340,8 @@ class Source(Module):
                     generated_species.append((species, fraction * volume))
 
             # Create events at outlet connection
-            connection.queue.enqueue(Event(generated_species))
+            # connection.queue.enqueue(Event(generated_species))
+            self.generate_flow(connection, generated_species)
             outlet_amount += volume
 
 class Tank(Module):
@@ -360,7 +368,9 @@ class Tank(Module):
                     fraction = 1 / len(Event.registered_species)
                     generated_species.append((species, fraction * volume))
         
-            connection.queue.enqueue(Event(generated_species))
+            # Create events at outlet connection
+            # connection.queue.enqueue(Event(generated_species))
+            self.generate_flow(connection, generated_species)
             outlet_amount += volume
         
         
@@ -382,7 +392,7 @@ class Sink(Module):
         self.view = SinkView(self)
 
     def process(self):
-        self.queue.events.clear()
+        self.purge_flow()
 
 
 class Splitter(Module):

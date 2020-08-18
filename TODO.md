@@ -10,8 +10,6 @@ Refactor creating, drawing, and completion of streams and readouts
 Event system should be fully encapsulated
 - Abstract event generation and destruction away from Modules
     - source transfers a volume to its outlet connection, outlet connection generates new events
-Refactor species to be represented as {'name': 'liquid water', 'state': 'liquid', 'density': 1}
-
 
 Considerations:
 - Refactor Multiline class into helper functions
