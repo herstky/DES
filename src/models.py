@@ -5,7 +5,8 @@ from enum import Enum
 from .event_queue import EventQueue
 from .event import Event
 from .views import ReadoutView, StreamView, ConnectionView, SourceView, TankView, PumpView, SinkView, SplitterView, HydrocycloneView, JoinerView
-from .species import State
+# from .species import State
+from .species import Species
 
 
 
@@ -30,7 +31,7 @@ class Readout(Model):
         flowrates = self.stream.flowrates
         output = ''
         for species in Event.registered_species:
-            output += f'{species[0]}: {round(flowrates[species], 3)}\n'
+            output += f'{species.name}: {round(flowrates[species], 3)}\n'
         output = output[:-1]
         self.view.text_item.setPlainText(output)
 
@@ -81,7 +82,7 @@ class Stream(Model):
         return None
 
     def reset_flowrates(self):
-        self.flowrates = {(species_name, state): 0 for species_name, state in Event.registered_species}
+        self.flowrates = {species: 0 for species in Event.registered_species}
 
 
 class Connection(Model):
@@ -182,8 +183,8 @@ class OutletConnection(Connection):
     def transfer_events(self):
         if not self.flow_fractions:
             self.flow_fractions = {}
-            for species_name, state in Event.registered_species:
-                self.flow_fractions[(species_name, state)] = 1 / len(self.module.outlet_connections)
+            for species in Event.registered_species:
+                self.flow_fractions[species] = 1 / len(self.module.outlet_connections)
         
         # Calculate this outlet's share of each species' flow 
         species_outflows = {species: 0 for species in Event.registered_species}
@@ -321,18 +322,18 @@ class Source(Module):
         outlet_amount = 0
         for i in range(self.event_rate):
             volume = connection.capacity / self.event_rate
-            species = []
+            generated_species = []
             if self.volumetric_fractions:
-                for species_name, state in Event.registered_species:
-                    fraction = self.volumetric_fractions[(species_name, state)]
-                    species.append((species_name, state, fraction * volume))
+                for species in Event.registered_species:
+                    fraction = self.volumetric_fractions[species]
+                    generated_species.append((species, fraction * volume))
             else:
-                for species_name, state in Event.registered_species:
+                for species in Event.registered_species:
                     fraction = 1 / len(Event.registered_species)
-                    species.append((species_name, state, fraction * volume))
+                    generated_species.append((species, fraction * volume))
 
             # Create events at outlet connection
-            connection.queue.enqueue(Event(species))
+            connection.queue.enqueue(Event(generated_species))
             outlet_amount += volume
 
 class Tank(Module):
@@ -349,17 +350,17 @@ class Tank(Module):
         flow_demand = connection.capacity
         for i in range(self.event_rate):
             volume = flow_demand / self.event_rate
-            species = []
+            generated_species = []
             if self.volumetric_fractions:
-                for species_name, state in Event.registered_species:
-                    fraction = self.volumetric_fractions[(species_name, state)]
-                    species.append((species_name, state, fraction * volume))
+                for species in Event.registered_species:
+                    fraction = self.volumetric_fractions[species]
+                    generated_species.append((species, fraction * volume))
             else:
-                for species_name, state in Event.registered_species:
+                for species in Event.registered_species:
                     fraction = 1 / len(Event.registered_species)
-                    species.append((species_name, state, fraction * volume))
+                    generated_species.append((species, fraction * volume))
         
-            connection.queue.enqueue(Event(species))
+            connection.queue.enqueue(Event(generated_species))
             outlet_amount += volume
         
         
@@ -400,9 +401,9 @@ class Splitter(Module):
         outlet1_flow_fractions = {}
         outlet2_flow_fractions = {}
 
-        for species_name, state in Event.registered_species:
-            outlet1_flow_fractions[(species_name, state)] = self.split_fraction
-            outlet2_flow_fractions[(species_name, state)] = (1 - self.split_fraction)
+        for species in Event.registered_species:
+            outlet1_flow_fractions[species] = self.split_fraction
+            outlet2_flow_fractions[species] = (1 - self.split_fraction)
 
         outlet_connection1.set_flow_fractions(outlet1_flow_fractions)
         outlet_connection2.set_flow_fractions(outlet2_flow_fractions)
@@ -423,13 +424,13 @@ class Hydrocyclone(Module):
         reject_flow_fractions = {}
 
         # TODO rrw should be based on mass, rrv should be a percent of all species, not just water
-        for species_name, state in Event.registered_species:
-            if species_name == 'water':
-                accept_flow_fractions[(species_name, state)] = 1 - self.rrv
-                reject_flow_fractions[(species_name, state)] = self.rrv
-            elif species_name == 'fiber' or species_name == 'filler':
-                accept_flow_fractions[(species_name, state)] = 1 - self.rrw
-                reject_flow_fractions[(species_name, state)] = self.rrw
+        for species in Event.registered_species:
+            if species.name == 'water':
+                accept_flow_fractions[species] = 1 - self.rrv
+                reject_flow_fractions[species] = self.rrv
+            elif species.name == 'fiber' or species_name == 'filler':
+                accept_flow_fractions[species] = 1 - self.rrw
+                reject_flow_fractions[species] = self.rrw
 
         accepts.set_flow_fractions(accept_flow_fractions)
         accepts.set_flow_fractions(reject_flow_fractions)

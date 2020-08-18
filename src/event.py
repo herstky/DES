@@ -1,22 +1,27 @@
-from .species import gases_dict, liquids_dict, solids_dict, State
+# from .species import gases_dict, liquids_dict, solids_dict, State
+from .species import Species
 
 class Event:
     registered_species = [] # contains tuples in the form (species_name, state)
     count = 0
     def __init__(self, generated_species):
         if len(self.registered_species) == 0:
-            raise RuntimeError('No species registered')
+            raise RuntimeError('You must register at least one species')
         
-        gases = {species_name: {'data': gases_dict[species_name], 'volume': 0} for species_name, state in self.registered_species if state is State.gas}
-        liquids = {species_name: {'data': liquids_dict[species_name], 'volume': 0} for species_name, state in self.registered_species if state is State.liquid}
-        solids = {species_name: {'data': solids_dict[species_name], 'volume': 0} for species_name, state in self.registered_species if state is State.solid}
+        # gases = {species_name: {'data': gases_dict[species_name], 'volume': 0} for species_name, state in self.registered_species if state is State.gas}
+        # liquids = {species_name: {'data': liquids_dict[species_name], 'volume': 0} for species_name, state in self.registered_species if state is State.liquid}
+        # solids = {species_name: {'data': solids_dict[species_name], 'volume': 0} for species_name, state in self.registered_species if state is State.solid}
   
-        self.species = {State.gas: gases, State.liquid: liquids, State.solid: solids}
+        # self.species = {State.gas: gases, State.liquid: liquids, State.solid: solids}
+        self._species_volumes = {species: 0 for species in self.registered_species}
+
+        # for species_name, species_state, volume in generated_species:
+        #     self.species[species_state][species_name]['volume'] = volume
+
+        for species, volume in generated_species:
+            self._species_volumes[species] = volume
 
         Event.count += 1
-
-        for species_name, species_state, volume in generated_species:
-            self.species[species_state][species_name]['volume'] = volume
     
     def __del__(self):
         Event.count -= 1
@@ -31,23 +36,29 @@ class Event:
     def aggregate_volume(self):
         total_volume = 0
 
-        for state in self.species:
-            for species_name in self.species[state]: 
-                total_volume += self.species[state][species_name]['volume']
+        # for state in self.species:
+        #     for species_name in self.species[state]: 
+        #         total_volume += self.species[state][species_name]['volume']
+
+        for species in self._species_volumes:
+            total_volume += self._species_volumes[species]
 
         return total_volume
 
     def species_volume(self, species):
-        species_name, state = species
-        return self.species[state][species_name]['volume']
+        # species_name, state = species
+        # return self.species[state][species_name]['volume']
+        return self._species_volumes[species]
 
     def set_species_volume(self, species, volume):
-        species_name, state = species
-        self.species[state][species_name]['volume'] = volume
+        # species_name, state = species
+        # self.species[state][species_name]['volume'] = volume
+        self._species_volumes[species] = volume
 
     def add_species_volume(self, species, volume):
-        species_name, state = species
-        self.species[state][species_name]['volume'] += volume
+        # species_name, state = species
+        # self.species[state][species_name]['volume'] += volume
+        self._species_volumes[species] += volume
 
     def split_species_volume(self, species, split_fraction):
         volume = self.species_volume(species)
