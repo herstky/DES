@@ -1,7 +1,7 @@
 from enum import Enum
 
 from PyQt5.QtWidgets import QAction, QPushButton, QLabel, QWidget, QGraphicsScene, QMainWindow, QGraphicsItem, QGraphicsLineItem, QGraphicsRectItem
-from PyQt5.QtGui import QPixmap, QWindow, QPen, QTransform, QColor
+from PyQt5.QtGui import QGuiApplication, QPixmap, QWindow, QPen, QTransform, QColor
 from PyQt5.QtCore import QTimer, pyqtSlot, QEvent, Qt, QLineF, QPoint, QPointF, QRectF
 
 from .simulation import Simulation
@@ -40,8 +40,7 @@ class ApplicationWindow(QMainWindow):
         self.ui.setupUi(self)
         self.state = ApplicationWindow.idle
         self.scene = QGraphicsScene(self)
-        self.scene.setSceneRect(QRectF(0, 0, self.ui.graphicsView.width(), self.ui.graphicsView.height()))
-        self.ui.graphicsView.setScene(self.scene)   
+        self.ui.graphicsView.setScene(self.scene) 
         self.setWindowTitle('Flow Modeler')
         self.show()
 
@@ -69,6 +68,12 @@ class ApplicationWindow(QMainWindow):
         self.ui.graphicsView.setMouseTracking(True)
         self.installEventFilter(self)
 
+        screen = QGuiApplication.primaryScreen()
+        screen_width = screen.geometry().width()
+        screen_height = screen.geometry().height()
+
+        self.scene.setSceneRect(QRectF(0, 0, screen_width, screen_height))
+
         self.floating_model = None
         self.floating_line = None
 
@@ -91,23 +96,36 @@ class ApplicationWindow(QMainWindow):
         self.scene.removeItem(self.floating_line)
         self.floating_line = None
 
+    '''Processes mouse events. Override of parent method.'''
     def eventFilter(self, source, event):
-        if event.type() == QEvent.HoverMove and source is self:
+        if event.type() == QEvent.HoverMove and source is self:            
+            # print(f'view width: {self.ui.graphicsView.width()}, view height: {self.ui.graphicsView.height()}')
+            # print(f'scene width: {self.scene.width()}, scene height: {self.scene.height()}')
+            
             self.mouse_x = event.pos().x()
             self.mouse_y = event.pos().y()
-            if self.state is ApplicationWindow.placing_module:
+
+            graphics_view_parent = self.ui.graphicsView.parent()
+            mapped_event_pos = graphics_view_parent.mapFromParent(event.pos())
+            inbounds = mapped_event_pos.x() >= 0 and \
+                       mapped_event_pos.y() >= 0 and \
+                       mapped_event_pos.x() < self.ui.graphicsView.width() and \
+                       mapped_event_pos.y() < self.ui.graphicsView.height()
+
+
+            if inbounds and self.state is ApplicationWindow.placing_module:
                 width = self.floating_model.view.graphics_item.pixmap().width()
                 height = self.floating_model.view.graphics_item.pixmap().height()
                 self.floating_model.view.graphics_item.setPos(self.offset_point(self.mouse_scene_pos, -width, -height))
-            elif self.state is ApplicationWindow.placing_stream or self.state is self.placing_readout:
+            elif inbounds and (self.state is ApplicationWindow.placing_stream or self.state is self.placing_readout):
                 width = self.floating_model.view.graphics_item.rect().width()
                 height = self.floating_model.view.graphics_item.rect().height()
                 self.floating_model.view.graphics_item.setPos(self.offset_point(self.mouse_scene_pos, -width / 2, -height / 2))
-            elif self.state is ApplicationWindow.drawing_stream:
+            elif inbounds and self.state is ApplicationWindow.drawing_stream:
                 p1 = self.floating_line.line().p1()
                 p2 = self.mouse_scene_pos
                 self.floating_line.setLine(QLineF(p1, p2))
-            elif self.state is ApplicationWindow.drawing_readout:
+            elif inbounds and self.state is ApplicationWindow.drawing_readout:
                 p1 = self.floating_line.mapToScene(self.floating_line.line().p1()) 
 
                 width = self.floating_model.view.graphics_item.rect().width()
