@@ -1,22 +1,13 @@
-# from .species import gases_dict, liquids_dict, solids_dict, State
 from .species import Species
 
 class Event:
     registered_species = [] # contains tuples in the form (species_name, state)
     count = 0
-    def __init__(self, generated_species):
+    def __init__(self, generated_species: list) -> None:
         if len(self.registered_species) == 0:
             raise RuntimeError('You must register at least one species')
-        
-        # gases = {species_name: {'data': gases_dict[species_name], 'volume': 0} for species_name, state in self.registered_species if state is State.gas}
-        # liquids = {species_name: {'data': liquids_dict[species_name], 'volume': 0} for species_name, state in self.registered_species if state is State.liquid}
-        # solids = {species_name: {'data': solids_dict[species_name], 'volume': 0} for species_name, state in self.registered_species if state is State.solid}
-  
-        # self.species = {State.gas: gases, State.liquid: liquids, State.solid: solids}
+    
         self._species_volumes = {species: 0 for species in self.registered_species}
-
-        # for species_name, species_state, volume in generated_species:
-        #     self.species[species_state][species_name]['volume'] = volume
 
         for species, volume in generated_species:
             self._species_volumes[species] = volume
@@ -28,17 +19,16 @@ class Event:
 
     @classmethod
     def register_species(cls, species):
+        ''' Class method. Adds species to list of registered Species.
+        '''
         if type(species) is not list:
             species = [species]
         for _species in species:
             cls.registered_species.append(_species)
 
     def aggregate_volume(self):
+        ''' Returns the total volume of all Species contained in this Event.'''
         total_volume = 0
-
-        # for state in self.species:
-        #     for species_name in self.species[state]: 
-        #         total_volume += self.species[state][species_name]['volume']
 
         for species in self._species_volumes:
             total_volume += self._species_volumes[species]
@@ -46,21 +36,26 @@ class Event:
         return total_volume
 
     def species_volume(self, species):
-        # species_name, state = species
-        # return self.species[state][species_name]['volume']
+        ''' Returns the volume of a specific Species contained in this 
+            Event.'''
         return self._species_volumes[species]
 
     def set_species_volume(self, species, volume):
-        # species_name, state = species
-        # self.species[state][species_name]['volume'] = volume
+        ''' Sets the volume of a specific Species contained in this Event to 
+            volume.'''
         self._species_volumes[species] = volume
 
     def add_species_volume(self, species, volume):
-        # species_name, state = species
-        # self.species[state][species_name]['volume'] += volume
+        ''' Adds volume to a specific Species contained in this Event.'''
         self._species_volumes[species] += volume
 
     def split_species_volume(self, species, split_fraction):
+        ''' Multiplies the volume of a specific Species contained in this Event
+            by split_fraction and returns the volume that was removed. 
+        '''
+        if split_fraction < 0 or split_fraction > 1:
+            raise ValueError('split_fraction must be between 0 and 1 (inclusive).')
+
         volume = self.species_volume(species)
         self.set_species_volume(species, split_fraction * volume)
         return (split_fraction * volume, (1 - split_fraction) * volume)

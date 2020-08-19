@@ -91,17 +91,21 @@ class ApplicationWindow(QMainWindow):
         return QPoint(point.x() + dx, point.y() + dy)
 
     def remove_floating_objects(self):
-        self.views.remove(self.floating_model.view)
-        del self.floating_model
-        self.scene.removeItem(self.floating_line)
+        try:
+            self.views.remove(self.floating_model.view)
+        except Exception:
+            pass
+        self.floating_model = None
+
+        try:
+            self.scene.removeItem(self.floating_line)
+        except Exception:
+            pass
         self.floating_line = None
 
-    '''Processes mouse events. Override of parent method.'''
+    # Processes mouse events. Override of parent method.
     def eventFilter(self, source, event):
-        if event.type() == QEvent.HoverMove and source is self:            
-            # print(f'view width: {self.ui.graphicsView.width()}, view height: {self.ui.graphicsView.height()}')
-            # print(f'scene width: {self.scene.width()}, scene height: {self.scene.height()}')
-            
+        if event.type() == QEvent.HoverMove and source is self:                  
             self.mouse_x = event.pos().x()
             self.mouse_y = event.pos().y()
 
@@ -111,7 +115,6 @@ class ApplicationWindow(QMainWindow):
                        mapped_event_pos.y() >= 0 and \
                        mapped_event_pos.x() < self.ui.graphicsView.width() and \
                        mapped_event_pos.y() < self.ui.graphicsView.height()
-
 
             if inbounds and self.state is ApplicationWindow.placing_module:
                 width = self.floating_model.view.graphics_item.pixmap().width()
@@ -158,7 +161,7 @@ class ApplicationWindow(QMainWindow):
         self.timer.start()
 
     def stop_sim(self):
-        self.staet = ApplicationWindow.idle
+        self.state = ApplicationWindow.idle
         self.timer.stop()
 
     @pyqtSlot()
@@ -237,6 +240,7 @@ class ApplicationWindow(QMainWindow):
                     
         if self.state is not ApplicationWindow.drawing_stream:
             self.state = self.idle
+            self.floating_model.cleanup()
             self.remove_floating_objects()
 
     def complete_stream(self, pos):
@@ -270,11 +274,11 @@ class ApplicationWindow(QMainWindow):
             self.state = ApplicationWindow.idle
 
             # Remove initial connection made
-            if self.floating_model.inlet_connection:
-                self.floating_model.remove_connection(self.floating_model.inlet_connection)
-            elif self.floating_model.outlet_connection:
-                self.floating_model.remove_connection(self.floating_model.outlet_connection)
-
+            # if self.floating_model.inlet_connection:
+            #     self.floating_model.remove_connection(self.floating_model.inlet_connection)
+            # elif self.floating_model.outlet_connection:
+            #     self.floating_model.remove_connection(self.floating_model.outlet_connection)
+            self.floating_model.cleanup()
             self.remove_floating_objects()
     
     @pyqtSlot()
@@ -317,9 +321,8 @@ class ApplicationWindow(QMainWindow):
 
         if self.state is not ApplicationWindow.drawing_readout:
             self.state = self.idle
-            self.views.remove(self.floating_model.view)
-            self.scene.removeItem(self.floating_model.view.graphics_item)
-            del self.floating_model
+            self.floating_model.cleanup()
+            self.remove_floating_objects()
 
     def complete_readout(self, pos):
         self.state = self.idle
