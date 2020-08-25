@@ -27,7 +27,8 @@ class Event:
             cls.registered_species.append(_species)
 
     def aggregate_volume(self):
-        ''' Returns the total volume of all Species contained in this Event.'''
+        ''' Returns the total volume of all Species contained in this 
+            Event.'''
         total_volume = 0
 
         for species in self._species_volumes:
@@ -40,19 +41,33 @@ class Event:
             Event.'''
         return self._species_volumes[species]
 
+    def aggregate_mass(self):
+        ''' Returns the total mass of all Species contained in this 
+            Event.'''
+        total_mass = 0
+
+        for Species in self._species_volumes:
+            total_mass += self._species_volumes[species] * species['density']
+
+    def species_mass(self, species):
+        ''' Returns the mass of a specific Species contained in this 
+            Event.'''
+        return self._species_volumes[species] * species['density']
+
     def set_species_volume(self, species, volume):
         ''' Sets the volume of a specific Species contained in this Event to 
             volume.'''
         self._species_volumes[species] = volume
 
     def add_species_volume(self, species, volume):
-        ''' Adds volume to a specific Species contained in this Event.'''
+        ''' Adds volume to a specific Species contained in this 
+            Event.'''
         self._species_volumes[species] += volume
 
     def split_species_volume(self, species, split_fraction):
-        ''' Multiplies the volume of a specific Species contained in this Event
-            by split_fraction and returns the volume that was removed. 
-        '''
+        ''' Multiplies the volume of a specific Species contained in 
+            this Event by split_fraction and returns the volume that 
+            was removed.'''
         if split_fraction < 0 or split_fraction > 1:
             raise ValueError('split_fraction must be between 0 and 1 (inclusive).')
 

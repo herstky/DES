@@ -41,10 +41,20 @@ class EventQueue:
 
     @property
     def volume(self):
-        ''' Property. Returns the total volume of all Events in the queue.'''
+        ''' Property. Returns the total volume of all Events in the 
+            queue.'''
         res = 0
         for event in self.events:
             res += event.aggregate_volume()
+        return res
+
+    @property
+    def mass_flow(self):
+        ''' Property. Returns the total mass flow of all Events in the 
+            queue'''
+        res = 0
+        for event in self.events:
+            res += event.aggregate_mass()
         return res
 
     @property
@@ -55,4 +65,14 @@ class EventQueue:
         for event in self.events:
             for species in Event.registered_species:
                 res[species] += event.species_volume(species)
+        return res
+
+    @property
+    def species_mass_flows(self):
+        ''' Property. Returns a dictionary mapping each registered Species to its 
+            corresponding aggregate mass flow in the queue.'''
+        res = {species: 0 for species in Event.registered_species}
+        for event in self.events:
+            for species in Event.registered_species:
+                res[species] += event.species_mass(species)
         return res
