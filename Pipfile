@@ -8,6 +8,7 @@ rope = "*"
 
 [packages]
 pyqt5 = "*"
+sigfig = "*"
 
 [requires]
 python_version = "3.8"

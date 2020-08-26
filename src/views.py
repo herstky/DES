@@ -67,7 +67,7 @@ class StreamView(View):
 class ConnectionView(View):
     def __init__(self, model):
         super().__init__(model)
-        if isinstance(self.model, models.PushInletConnection) or isinstance(self.model, models.PushOutletConnection):
+        if isinstance(self.model, models.PushInletConnection):
             self.graphics_item = QGraphicsRectItem(0, 0, 15, 15)
             self.graphics_item.setBrush(Qt.black)
 
@@ -77,11 +77,31 @@ class ConnectionView(View):
             self.connection_marker_item = QGraphicsRectItem(4, 4, 7, 7, inner_rect_item)
             self.connection_marker_item.setBrush(Qt.red)
             self.connection_marker_item.setOpacity(0.3)
-        else:
+        elif isinstance(self.model, models.PushOutletConnection):
+            self.graphics_item = QGraphicsRectItem(0, 0, 15, 15)
+            self.graphics_item.setBrush(Qt.black)
+
+            inner_rect_item = QGraphicsRectItem(2, 2, 11, 11, self.graphics_item)
+            inner_rect_item.setBrush(Qt.white)
+
+            self.connection_marker_item = QGraphicsRectItem(4, 4, 7, 7, inner_rect_item)
+            self.connection_marker_item.setBrush(Qt.red)
+            self.connection_marker_item.setOpacity(0.3)
+        elif isinstance(self.model, models.PullInletConnection):
             self.graphics_item = QGraphicsEllipseItem(0, 0, 15, 15)
             self.graphics_item.setBrush(Qt.black)
 
             inner_circle_item = QGraphicsEllipseItem(1, 1, 13, 13, self.graphics_item)
+            inner_circle_item.setBrush(Qt.white)
+
+            self.connection_marker_item = QGraphicsEllipseItem(4, 4, 7, 7, inner_circle_item)
+            self.connection_marker_item.setBrush(Qt.red)
+            self.connection_marker_item.setOpacity(0.3)
+        elif isinstance(self.model, models.PullOutletConnection):
+            self.graphics_item = QGraphicsEllipseItem(0, 0, 15, 15)
+            self.graphics_item.setBrush(Qt.black)
+
+            inner_circle_item = QGraphicsEllipseItem(2, 2, 11, 11, self.graphics_item)
             inner_circle_item.setBrush(Qt.white)
 
             self.connection_marker_item = QGraphicsEllipseItem(4, 4, 7, 7, inner_circle_item)

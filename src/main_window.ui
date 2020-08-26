@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>863</width>
+    <width>999</width>
     <height>791</height>
    </rect>
   </property>
@@ -48,7 +48,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>863</width>
+     <width>999</width>
      <height>26</height>
     </rect>
    </property>
@@ -84,6 +84,7 @@
      <addaction name="actionSplitter"/>
      <addaction name="actionHydrocyclone"/>
      <addaction name="actionJoiner"/>
+     <addaction name="actionFiberReadout"/>
      <addaction name="actionReadout"/>
     </widget>
     <addaction name="menuBlock"/>
@@ -159,6 +160,7 @@
    <addaction name="actionSplitter"/>
    <addaction name="actionHydrocyclone"/>
    <addaction name="actionJoiner"/>
+   <addaction name="actionFiberReadout"/>
    <addaction name="actionReadout"/>
   </widget>
   <action name="actionNew">
@@ -253,6 +255,11 @@
   <action name="actionHydrocyclone">
    <property name="text">
     <string>Hydrocyclone</string>
+   </property>
+  </action>
+  <action name="actionFiberReadout">
+   <property name="text">
+    <string>FiberReadout</string>
    </property>
   </action>
  </widget>

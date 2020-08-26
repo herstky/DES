@@ -3,7 +3,7 @@ from .species import Species
 class Event:
     registered_species = [] # contains tuples in the form (species_name, state)
     count = 0
-    def __init__(self, generated_species: list) -> None:
+    def __init__(self, generated_species):
         if len(self.registered_species) == 0:
             raise RuntimeError('You must register at least one species')
     

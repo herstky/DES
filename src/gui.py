@@ -6,7 +6,8 @@ from PyQt5.QtCore import QTimer, pyqtSlot, QEvent, Qt, QLineF, QPoint, QPointF, 
 
 from .simulation import Simulation
 from .main_window import Ui_MainWindow
-from .models import Source, Tank, Pump, Sink, Stream, Connection, Splitter, Hydrocyclone, Joiner, Readout
+from .models import Source, Tank, Pump, Sink, Stream, Connection, Splitter, Hydrocyclone, Joiner, Readout, FiberReadout
+from .event import Event
 from .views import StreamView, ReadoutView
 
 
@@ -62,6 +63,7 @@ class ApplicationWindow(QMainWindow):
         self.ui.actionHydrocyclone.triggered.connect(self.create_hydrocyclone_slot)
         self.ui.actionJoiner.triggered.connect(self.create_joiner_slot)
         self.ui.actionReadout.triggered.connect(self.create_readout)
+        self.ui.actionFiberReadout.triggered.connect(self.create_fiber_readout)
 
         self.setMouseTracking(True)
         self.ui.centralwidget.setMouseTracking(True)
@@ -166,7 +168,15 @@ class ApplicationWindow(QMainWindow):
 
     @pyqtSlot()
     def create_source_slot(self):
-        self.add_module(Source(self, 'Source', 500))
+        volume_fractions = {}
+        for species in Event.registered_species:
+            if species.name == 'fiber':
+                volume_fractions[species] = 0.01
+            elif species.name == 'water':
+                volume_fractions[species] = 0.99
+
+
+        self.add_module(Source(self, 'Source', 1000, volume_fractions))
 
     @pyqtSlot()
     def create_tank_slot(self):
@@ -285,6 +295,17 @@ class ApplicationWindow(QMainWindow):
     def create_readout(self):
         self.state = self.placing_readout
         self.floating_model = Readout(self)
+        self.scene.addItem(self.floating_model.view.graphics_item)
+   
+        width = self.floating_model.view.graphics_item.rect().width()
+        height = self.floating_model.view.graphics_item.rect().height()
+
+        self.floating_model.view.graphics_item.setPos(self.offset_point(self.mouse_scene_pos, -width / 2, -height / 2))
+
+    @pyqtSlot()
+    def create_fiber_readout(self):
+        self.state = self.placing_readout
+        self.floating_model = FiberReadout(self)
         self.scene.addItem(self.floating_model.view.graphics_item)
    
         width = self.floating_model.view.graphics_item.rect().width()

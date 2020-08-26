@@ -1,4 +1,5 @@
 import math
+import sigfig
 
 from enum import Enum
 
@@ -57,6 +58,39 @@ class Readout(Model):
         except Exception:
             pass
 
+
+class FiberReadout(Readout):
+    def __init__(self, gui, name='Readout'):
+        super().__init__(gui, name)
+
+    def update(self):
+        ''' Overrides parent's update method to display values relevant to 
+            paper manufacturing.'''
+        flowrates = self.stream.flowrates
+        liquid_flowrates = {}
+        total_liquid_flow = 0
+        solid_flowrates = {}
+        total_solid_flow = 0
+        for species, flowrate in flowrates.items():
+            try:
+                if species.properties['state'] == 'liquid':
+                    liquid_flowrates[species] = flowrate
+                    total_liquid_flow += flowrate
+                elif species.properties['state'] == 'solid':
+                    solid_flowrates[species] = flowrate
+                    total_solid_flow += flowrate
+            except KeyError as e:
+                print('All species must have a "state" property.')
+
+        total_flow = total_liquid_flow + total_solid_flow
+        
+        if not total_flow:
+            output = ''
+        else:
+            consistency = total_solid_flow / total_flow * 100
+            tonnage = total_solid_flow * 60 * 24 / 1000
+            output = f'{sigfig.round(total_flow, sigfigs=3)} - {sigfig.round(consistency, sigfigs=3)} - {sigfig.round(tonnage, sigfigs=3)}'
+        self.view.text_item.setPlainText(output)
 
 
 class Stream(Model):
@@ -383,15 +417,15 @@ class Module(Model):
             in preparation for the current iteration.'''
         self.inlet_flows.clear()
 
-        self.initial_queue_length = self.queue.length()
-        self.initial_species_volumes = self.queue.species_flows
-
         for inlet_connection in self.inlet_connections:
             inlet_connection.pull()
 
         for inlet_connection in self.inlet_connections:
             inlet_flow = inlet_connection.transfer_events()
             self.inlet_flows.append(inlet_flow)
+
+        self.initial_queue_length = self.queue.length()
+        self.initial_species_volumes = self.queue.species_flows
 
     def process(self):
         ''' Override this method to define a Module subclass' behaviour.'''
@@ -423,7 +457,7 @@ class Module(Model):
 
 class Source(Module):
     def __init__(self, gui, name='Source', outlet_capacity=10000, 
-                 volumetric_fractions=None, event_rate=1000):
+                 volumetric_fractions=None, event_rate=10000):
         super().__init__(gui, name)
         self.add_outlet_connection(PushOutletConnection(self.gui, self, outlet_capacity))
         self.volumetric_fractions = volumetric_fractions
@@ -552,62 +586,64 @@ class Hydrocyclone(Module):
         ''' Splits the flow to this Hydrocyclone instance's inlet connection 
             between its accepts and rejects Connections as specified by its 
             rrv and rrw.'''
-        accepts, rejects = self.outlet_connections
-        accept_flow_fractions = {}
-        reject_flow_fractions = {}
-
-        # TODO rrw should be based on mass, rrv should be a percent of all species, not just water
-        # use species_flows method of event_queue
-        solids = []
-        solids_volume = 0
-        solids_mass = 0
-        liquids = []
-        liquids_volume = 0
+        accepts_connection, rejects_connection = self.outlet_connections
+        accepts_flow_fractions = {}
+        rejects_flow_fractions = {}
     
+        total_feed_flow = self.queue.volume # Total volumetric flow at the feed.
+        feed_flows = {} # Volumetric flows of all species at the feed.
+        feed_mass_flows = {} # Mass flows of all species at the feed.
+        feed_liquids_flows = {} # Volumetric flows of all liquid species at the feed.
+        total_feed_liquids_flow = 0 # Sum of volumetric flows of all liquid species at the feed.
+        liquid_ratios = {} # Ratios of each liquid feed volumetric flow to total_feed_liquids_flow.
+        feed_solids_flows = {} # Volumetric flows of all solid species at the feed.
+
+        rejects_flows = {} # Volumetric flows of all species at the rejects.
+        rejects_mass_flows = {} # Mass flows of all species at the rejects.
+        total_rejects_solids_flow = 0 # Sum of volumetric flows of all solid species at the rejects.
+        total_rejects_flow = total_feed_flow * self.rrv # Total volumetric flow at the rejects.
+
+        # Separate liquids from solids and store volumes of each species.
         for species in Event.registered_species:
             try:
-                if species.properties['state'] == 'solid':
-                    solids.append(species)
-                    solids_volume += self.queue.species_flows[species]
-                    solids_mass += self.queue.species_mass_flows[species]
-                elif species.properties['state'] == 'liquid':
-                    liquids.append(species)
-                    liquids_volume += self.queue.species_flows[species]
+                feed_flows[species] = self.queue.species_flows[species]
+                feed_mass_flows[species] = feed_flows[species] * species.properties['density']
+                if species.properties['state'] == 'liquid':
+                    feed_liquids_flows[species] = self.queue.species_flows[species]
+                    total_feed_liquids_flow += feed_liquids_flows[species]
+                elif species.properties['state'] == 'solid':
+                    feed_solids_flows[species] = self.queue.species_flows[species]
+                    rejects_mass_flows[species] = feed_mass_flows[species] * self.rrw
+                    rejects_flows[species] = rejects_mass_flows[species] / species.properties['density']
+                    total_rejects_solids_flow += rejects_flows[species]
+  
             except KeyError as e:
-                print('All species must have a "state" property.')
+                print('All species must have "state" and "density" properties.')
 
-        accept_flow = 0
-        reject_flow = 0
+        total_rejects_liquids_flow = total_rejects_flow - total_rejects_solids_flow # Total volumetric flow of all liquids at the rejects.
 
-        for species in solids:
-            # species_accept_mass_flow = self.queue.species_mass_flows[species] * (1 - self.rrw) 
+        # Calculate and store rejects flows for all liquids.
+        for liquid, volume in feed_liquids_flows.items():
+            try:
+                ratio = volume / total_feed_liquids_flow
+            except ZeroDivisionError as e:
+                print(e)
+                ratio = 0
+            rejects_flows[liquid] = total_rejects_liquids_flow * ratio
 
-            # Calculate mass flow based on rrw, then convert to volumetric flow using density,
-            # then subtract reject flow from feed flow to get accept flow. 
-            species_reject_mass_flow = self.queue.species_mass_flows[species] * self.rrw
-            species_reject_flow = species_reject_mass_flow / species.properties['density']
-            species_accept_flow = self.queue.species_flows[species] - species_reject_flow
-
-            accept_flow += species_accept_flow
-            reject_flow += species_reject_flow
-            accept_flow_fractions[species] = species_accept_flow / self.queue.species_flows[species]
-            reject_flow_fractions[species] = species_reject_flow / self.queue.species_flows[species]
-
-        remaining_reject_flow = self.queue.volume * self.rrv - reject_flow
-
-
+        # Calculate and store flow fractions for accepts and rejects
         for species in Event.registered_species:
-            if species.name == 'water':
-                accept_flow_fractions[species] = 1 - self.rrv
-                reject_flow_fractions[species] = self.rrv
-            elif species.name == 'fiber' or species_name == 'filler':
-                accept_flow_fractions[species] = 1 - self.rrw
-                reject_flow_fractions[species] = self.rrw
-
-            species_flow = self.queue.species_flows[species]
-
-        accepts.set_flow_fractions(accept_flow_fractions)
-        rejects.set_flow_fractions(reject_flow_fractions)
+            try:
+                rejects_fraction = rejects_flows[species] / feed_flows[species]
+            except ZeroDivisionError as e:
+                print(e)
+                rejects_fraction = 0
+            accepts_fraction = 1 - rejects_fraction
+            rejects_flow_fractions[species] = rejects_fraction
+            accepts_flow_fractions[species] = accepts_fraction
+        
+        accepts_connection.set_flow_fractions(accepts_flow_fractions)
+        rejects_connection.set_flow_fractions(rejects_flow_fractions)
 
 
 class Joiner(Module):
