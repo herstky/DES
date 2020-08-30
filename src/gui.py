@@ -6,7 +6,7 @@ from PyQt5.QtCore import QTimer, pyqtSlot, QEvent, Qt, QLineF, QPoint, QPointF, 
 
 from .simulation import Simulation
 from .main_window import Ui_MainWindow
-from .models import Source, Tank, Pump, Sink, Stream, Connection, Splitter, Hydrocyclone, Joiner, Readout, FiberReadout
+from .models import Source, Tank, Pump, Sink, Stream, Connection, Splitter, Hydrocyclone, Joiner, JoinerPump, Readout, FiberReadout
 from .event import Event
 from .views import StreamView, ReadoutView
 
@@ -17,18 +17,18 @@ class ApplicationWindow(QMainWindow):
         running = 1
         idle = 2
         placing_module = 3
-        placing_stream = 4
-        drawing_stream = 5
-        placing_readout = 6
-        drawing_readout = 7
+        drawing_stream = 4
+        placing_readout = 5
+        drawing_readout = 6
+        dragging_joint = 7
 
     running = State.running
     idle = State.idle
     placing_module = State.placing_module
-    placing_stream = State.placing_stream
     drawing_stream = State.drawing_stream
     placing_readout = State.placing_readout
     drawing_readout = State.drawing_readout
+    dragging_joint_line = State.dragging_joint
 
     def __init__(self):
         super(ApplicationWindow, self).__init__()
@@ -54,7 +54,6 @@ class ApplicationWindow(QMainWindow):
 
         self.ui.actionStart.triggered.connect(self.run_sim)
         self.ui.actionStop.triggered.connect(self.stop_sim)
-        self.ui.actionStream.triggered.connect(self.create_stream_slot)
         self.ui.actionSource.triggered.connect(self.create_source_slot)
         self.ui.actionTank.triggered.connect(self.create_tank_slot)
         self.ui.actionPump.triggered.connect(self.create_pump_slot)
@@ -62,6 +61,7 @@ class ApplicationWindow(QMainWindow):
         self.ui.actionSplitter.triggered.connect(self.create_splitter_slot)
         self.ui.actionHydrocyclone.triggered.connect(self.create_hydrocyclone_slot)
         self.ui.actionJoiner.triggered.connect(self.create_joiner_slot)
+        self.ui.actionJoinerPump.triggered.connect(self.create_joiner_pump_slot)
         self.ui.actionReadout.triggered.connect(self.create_readout)
         self.ui.actionFiberReadout.triggered.connect(self.create_fiber_readout)
 
@@ -69,6 +69,7 @@ class ApplicationWindow(QMainWindow):
         self.ui.centralwidget.setMouseTracking(True)
         self.ui.graphicsView.setMouseTracking(True)
         self.installEventFilter(self)
+        self.ui.graphicsView.viewport().installEventFilter(self)
 
         screen = QGuiApplication.primaryScreen()
         screen_width = screen.geometry().width()
@@ -122,7 +123,7 @@ class ApplicationWindow(QMainWindow):
                 width = self.floating_model.view.graphics_item.pixmap().width()
                 height = self.floating_model.view.graphics_item.pixmap().height()
                 self.floating_model.view.graphics_item.setPos(self.offset_point(self.mouse_scene_pos, -width, -height))
-            elif inbounds and (self.state is ApplicationWindow.placing_stream or self.state is self.placing_readout):
+            elif inbounds and self.state is self.placing_readout:
                 width = self.floating_model.view.graphics_item.rect().width()
                 height = self.floating_model.view.graphics_item.rect().height()
                 self.floating_model.view.graphics_item.setPos(self.offset_point(self.mouse_scene_pos, -width / 2, -height / 2))
@@ -140,24 +141,35 @@ class ApplicationWindow(QMainWindow):
                 p1 = self.floating_line.mapFromScene(p1)
                 p2 = self.floating_line.mapFromScene(self.mouse_scene_pos)
                 self.floating_line.setLine(QLineF(p1, p2))
+            elif inbounds and self.state is ApplicationWindow.dragging_joint_line:
+                self.floating_model.view.set_joint_line(self.mouse_scene_pos)
+
+        elif event.type() == QEvent.MouseButtonRelease:
+            scene_pos = self.map_from_global_to_scene(event.pos())
+            if self.state is ApplicationWindow.idle:
+                pass
+            elif self.state is ApplicationWindow.dragging_joint_line:
+                self.state = ApplicationWindow.idle
+                self.floating_model = None
 
         return super(ApplicationWindow, self).eventFilter(source, event)
 
     def mousePressEvent(self, event):
         scene_pos = self.map_from_global_to_scene(event.pos())
         if self.state is ApplicationWindow.idle:
-            pass
+            stream = self.check_for_click_collisions(scene_pos)
+            if stream:
+                self.state = ApplicationWindow.dragging_joint_line
+                self.floating_model = stream
         elif self.state is ApplicationWindow.placing_module:
             self.place_module()
         elif self.state is ApplicationWindow.drawing_stream:
             self.complete_stream(scene_pos)
-        elif self.state is ApplicationWindow.placing_stream:
-            self.start_stream(scene_pos)
         elif self.state is ApplicationWindow.drawing_readout:
             self.complete_readout(scene_pos)
         elif self.state is ApplicationWindow.placing_readout:
             self.start_readout(scene_pos)
-    
+
     def run_sim(self):
         self.state = ApplicationWindow.running
         self.timer.start()
@@ -165,6 +177,12 @@ class ApplicationWindow(QMainWindow):
     def stop_sim(self):
         self.state = ApplicationWindow.idle
         self.timer.stop()
+
+    def check_for_click_collisions(self, pos):
+        for stream in self.simulation.streams:
+            if stream.view.check_for_joint_line_collision(pos):
+                return stream
+        return None
 
     @pyqtSlot()
     def create_source_slot(self):
@@ -175,12 +193,18 @@ class ApplicationWindow(QMainWindow):
             elif species.name == 'water':
                 volume_fractions[species] = 0.99
 
-
         self.add_module(Source(self, 'Source', 1000, volume_fractions))
 
     @pyqtSlot()
     def create_tank_slot(self):
-        self.add_module(Tank(self))
+        volume_fractions = {}
+        for species in Event.registered_species:
+            if species.name == 'fiber':
+                volume_fractions[species] = 0.00014
+            elif species.name == 'water':
+                volume_fractions[species] = 0.99986
+
+        self.add_module(Tank(self, 'Tank', 0, volume_fractions))
 
     @pyqtSlot()
     def create_pump_slot(self):
@@ -203,8 +227,8 @@ class ApplicationWindow(QMainWindow):
         self.add_module(Joiner(self))
 
     @pyqtSlot()
-    def create_stream_slot(self):
-        self.create_stream()
+    def create_joiner_pump_slot(self):
+        self.add_module(JoinerPump(self))
             
     def add_module(self, module):
         self.state = self.placing_module
@@ -218,22 +242,19 @@ class ApplicationWindow(QMainWindow):
         self.state = self.idle
         self.floating_model = None
 
-    def create_stream(self):
-        self.state = self.placing_stream
-        self.floating_model = Stream(self)
-        self.floating_model.view.graphics_item = self.scene.addRect(QRectF(0, 0, 5, 5))
-        
-        stream_graphics_item = self.floating_model.view.graphics_item
-        stream_graphics_item.setBrush(Qt.black)
-        width = stream_graphics_item.rect().width()
-        height = stream_graphics_item.rect().height()
-        stream_graphics_item.setPos(self.offset_point(self.mouse_scene_pos, -width / 2, -height / 2))
+    def connection_clicked(self, graphics_item, event):
+        scene_pos = graphics_item.mapToScene(event.pos())
+        if self.state == ApplicationWindow.idle:
+            self.create_stream(scene_pos)
+        elif self.state == ApplicationWindow.drawing_stream:
+            self.complete_stream(scene_pos)
 
-    def start_stream(self, pos):
+    def create_stream(self, pos):
+        self.floating_model = Stream(self)
+        
         line = QLineF(pos, pos)
         self.floating_line = self.scene.addLine(line)
         self.floating_line.setZValue(-1)
-        self.scene.removeItem(self.floating_model.view.graphics_item)
         for colliding_item in self.scene.collidingItems(self.floating_line):
             for view in self.views:
                 if isinstance(view.model, Connection) and view.graphics_item is colliding_item:
@@ -271,8 +292,8 @@ class ApplicationWindow(QMainWindow):
                     self.scene.removeItem(self.floating_line)
                     self.floating_line.setLine(QLineF(p1, p2)) 
                     self.floating_model.view.graphics_item = self.floating_line
-                    self.floating_model.view.multiline = Multiline(self.scene, self.floating_line.line())
-                    self.floating_model.view.multiline.snap_single_line()
+                    self.floating_model.view.set_lines(self.floating_line.line())
+                    self.floating_model.view.snap_line()
                     self.floating_model = None
                     self.floating_line = None
                     completed = True
@@ -315,10 +336,17 @@ class ApplicationWindow(QMainWindow):
 
     def start_readout(self, pos):
         for colliding_item in self.scene.collidingItems(self.floating_model.view.graphics_item):
+            if self.state is ApplicationWindow.idle:
+                break
             for view in self.views:
-                if type(view.model) is Stream and isinstance(view, StreamView) and colliding_item in view.multiline.line_items:
-                    self.state = self.drawing_readout
-                    self.floating_model.stream = view.model
+                if type(view.model) is Stream and isinstance(view, StreamView) and colliding_item in view.line_items:
+                    # If stream already has a Readout, cancel creation of new Readout.
+                    if not self.floating_model.connect_to_stream(view.model):
+                        self.state = ApplicationWindow.idle
+                        break
+                    else:
+                        self.state = self.drawing_readout
+
                     self.floating_line = self.scene.addLine(QLineF())
                     self.floating_line.setParentItem(self.floating_model.view.graphics_item)
                     p1 = p2 = pos
@@ -372,53 +400,3 @@ class ApplicationWindow(QMainWindow):
 
         self.floating_model = None
         self.floating_line = None
-
-
-class Multiline:
-    def __init__(self, scene, *args):
-        self.scene = scene
-        self.line_pairs = []
-        self.pen = QPen()
-        self.pen.setWidth(2)
-
-        for line in args:
-            self.add_graphics_line_item(line)
-  
-    @property
-    def line_items(self):
-        return [line_item for _, line_item in self.line_pairs]
-
-    @property
-    def lines(self):
-        return [line for line, _ in self.line_pairs]
-
-    def add_graphics_line_item(self, line):
-        line_item = QGraphicsLineItem(line)
-        line_item.setPen(self.pen)
-        line_item.setZValue(-1)
-        self.scene.addItem(line_item)
-        pair = (line, line_item)
-        self.line_pairs.append(pair)
-        return pair
-
-    def set_pen(self, pen):
-        self.pen = pen
-        for _, line_item in self.line_pairs:
-            line_item.setPen(self.pen)
-
-    def snap_single_line(self):
-        line, line_item = self.line_pairs[0]
-        line1 = QLineF(line.p1().x(), line.p1().y(), line.p1().x(), line.p2().y())
-        line2 = QLineF(line.p1().x(), line.p2().y(), line.p2().x(), line.p2().y())
-        line_item.setLine(line1)
-        self.add_graphics_line_item(line2)
-
-    def drag_joint(self):
-        pass
-
-
-
-
-
-
-

@@ -1,7 +1,7 @@
 from .species import Species
 
 class Event:
-    registered_species = [] # contains tuples in the form (species_name, state)
+    registered_species = [] 
     count = 0
     def __init__(self, generated_species):
         if len(self.registered_species) == 0:

@@ -88,7 +88,6 @@
      <addaction name="actionReadout"/>
     </widget>
     <addaction name="menuBlock"/>
-    <addaction name="actionStream"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -152,7 +151,6 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionStream"/>
    <addaction name="actionSource"/>
    <addaction name="actionTank"/>
    <addaction name="actionPump"/>
@@ -161,6 +159,7 @@
    <addaction name="actionHydrocyclone"/>
    <addaction name="actionJoiner"/>
    <addaction name="actionFiberReadout"/>
+   <addaction name="actionJoinerPump"/>
    <addaction name="actionReadout"/>
   </widget>
   <action name="actionNew">
@@ -232,11 +231,6 @@
     <string>Joiner</string>
    </property>
   </action>
-  <action name="actionStream">
-   <property name="text">
-    <string>Stream</string>
-   </property>
-  </action>
   <action name="actionReadout">
    <property name="text">
     <string>Readout</string>
@@ -260,6 +254,11 @@
   <action name="actionFiberReadout">
    <property name="text">
     <string>FiberReadout</string>
+   </property>
+  </action>
+  <action name="actionJoinerPump">
+   <property name="text">
+    <string>JoinerPump</string>
    </property>
   </action>
  </widget>

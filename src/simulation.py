@@ -12,6 +12,7 @@ class Simulation:
 
         self.iteration = 1
         self.modules = []
+        self.streams = []
         self.displays = []
 
     def run(self):
