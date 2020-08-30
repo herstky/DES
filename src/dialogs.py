@@ -60,7 +60,7 @@ class SourceDialog(ModelDialog):
     def ok(self):
         super().ok()
         accum = 0
-        for j in range(self.fields_table.rowCount()):
+        for j in range(2, self.fields_table.rowCount()):
             try:
                 accum += float(self.fields_table.cellWidget(j, 1).text())
             except Exception:
@@ -95,7 +95,7 @@ class TankDialog(ModelDialog):
     def ok(self):
         super().ok()
         accum = 0
-        for j in range(self.fields_table.rowCount()):
+        for j in range(1, self.fields_table.rowCount()):
             try:
                 accum += float(self.fields_table.cellWidget(j, 1).text())
             except Exception:

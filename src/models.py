@@ -8,7 +8,7 @@ from .event import Event
 from .views import (ReadoutView, StreamView, ConnectionView, SourceView, 
                     TankView, PumpView, SinkView, SplitterView, 
                     HydrocycloneView, JoinerView, JoinerPumpView)
-from .dialogs import ModelDialog, PumpDialog, SourceDialog, HydrocycloneDialog
+from .dialogs import ModelDialog, PumpDialog, TankDialog, SourceDialog, HydrocycloneDialog
 from .species import Species
 
 
@@ -321,12 +321,14 @@ class OutletConnection(Connection):
     def transfer_events(self):
         ''' Transfers Events from this OutletConnection instance's connected
             module to this OutletConnection instance's queue.'''
+        # If flow fractions to each outlet are not specified, split the flows
+        # to the outlets evenly.
         if not self.flow_fractions:
             self.flow_fractions = {}
             for species in Event.registered_species:
                 self.flow_fractions[species] = 1 / len(self.module.outlet_connections)
         
-        # Calculate this outlet's share of each species' flow 
+        # Calculate this outlet's share of each species' flow.
         species_outflows = {species: 0 for species in Event.registered_species}
         outflow = 0
         for species in Event.registered_species:
@@ -340,9 +342,9 @@ class OutletConnection(Connection):
         if not self.module.total_inlet_flow:
             event_share = self.module.initial_queue_length
         else:
-            event_share = math.ceil(self.module.initial_queue_length 
+            event_share = min(math.ceil(self.module.initial_queue_length 
                                     * outflow 
-                                    / self.module.total_inlet_flow) 
+                                    / self.module.total_inlet_flow), self.module.queue.length())
 
         events_processed = 0
         transferred_flow = 0
@@ -540,7 +542,7 @@ class Tank(Module):
         self.volumetric_fractions = volumetric_fractions
         self.event_rate = event_rate
         self.view = TankView(self)
-        self.dialog_class = SourceDialog
+        self.dialog_class = TankDialog
 
     def process(self):
         ''' Generates Events as specified by this Source instance's 
