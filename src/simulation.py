@@ -24,5 +24,4 @@ class Simulation:
         for display in self.displays:
             display.update()
 
-        # print(f'Iteration: {self.iteration}, event count: {Event.count}')
         self.iteration += 1     

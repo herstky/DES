@@ -7,3 +7,4 @@ difficult to obtain.
 
 The example shown in the demonstration below is that of a hydrocyclone system that is typical in pulp and paper mills. These systems are used to remove dirt, metal, and other debris from a pulp slurry in the papermaking process. 
 <h1>Demonstration</h1>
+This animation demonstrates how to create a single stage hydrocyclone system. The "source" module represents an upstream process which is outputting a certain amount of flow to the pump.The "tank" module is used to supply the difference in flow that exists between what the "source" module pushes forward and what the pump pulls. These two types of flow, push and pull, are represented by square and circle sockets, respectively. 
