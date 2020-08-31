@@ -59,6 +59,7 @@ class SourceDialog(ModelDialog):
 
     def ok(self):
         super().ok()
+        self.model.set_capacity(float(self.fields_table.cellWidget(1, 1).text()))
         accum = 0
         for j in range(2, self.fields_table.rowCount()):
             try:

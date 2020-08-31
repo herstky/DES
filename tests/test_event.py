@@ -34,31 +34,31 @@ class TestEvent(unittest.TestCase):
         self.event.registered_species.remove(test_species)
 
     def test_aggregate_volume(self):
-        self.assertEqual(self.event.aggregate_volume(), 1000)
+        self.assertEqual(self.event.aggregate_magnitude(), 1000)
         self.event.add_species_volume(('water', State.liquid), 500)
-        self.assertEqual(self.event.aggregate_volume(), 1500)
-        self.event.set_species_volume(('fiber', State.solid), 1000)
-        self.assertEqual(self.event.aggregate_volume(), 2000)
-        self.event.split_species_volume(('water', State.liquid), .5)
-        self.assertEqual(self.event.aggregate_volume(), 1500)
+        self.assertEqual(self.event.aggregate_magnitude(), 1500)
+        self.event.set_species_magnitude(('fiber', State.solid), 1000)
+        self.assertEqual(self.event.aggregate_magnitude(), 2000)
+        self.event.split_species_magnitude(('water', State.liquid), .5)
+        self.assertEqual(self.event.aggregate_magnitude(), 1500)
 
     def test_species_volume(self):
         test_species = ('water', State.liquid)
-        self.assertEqual(self.event.species_volume(test_species), 500)
+        self.assertEqual(self.event.species_magnitude(test_species), 500)
 
     def test_set_species_volume(self):
         test_species = ('fiber', State.solid)
-        self.event.set_species_volume(test_species, 100)
-        self.assertEqual(self.event.species_volume(test_species), 100)
+        self.event.set_species_magnitude(test_species, 100)
+        self.assertEqual(self.event.species_magnitude(test_species), 100)
 
     def test_add_species_volume(self):
         test_species = ('fiber', State.solid)
         self.event.add_species_volume(test_species, 100)
-        self.assertEqual(self.event.species_volume(test_species), 600)
+        self.assertEqual(self.event.species_magnitude(test_species), 600)
 
     def test_split_species_volume(self):
         test_species = ('water', State.liquid)
-        flows = self.event.split_species_volume(test_species, .1)
+        flows = self.event.split_species_magnitude(test_species, .1)
         self.assertEqual(flows[0], 50)
         self.assertEqual(flows[1], 450)
-        self.assertEqual(self.event.species_volume(test_species), 50)
+        self.assertEqual(self.event.species_magnitude(test_species), 50)

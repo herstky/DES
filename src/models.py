@@ -104,15 +104,9 @@ class FiberReadout(Readout):
         else:
             consistency = total_solid_flow / total_flow * 100
             tonnage = total_solid_flow * 60 * 24 / 1000
-            # output = f'{sigfig.round(total_flow, sigfigs=3)} - ' \
-            #          f'{sigfig.round(consistency, sigfigs=3)} - ' \
-            #          f'{sigfig.round(tonnage, sigfigs=3)}'
-
-            output = f'{round(total_flow, 0)} - ' \
-                     f'{round(consistency, 3)} - ' \
-                     f'{round(tonnage, 2)}'
-
-            # output = f'{total_flow} - {consistency} - {tonnage}'
+            output = f'{sigfig.round(total_flow, sigfigs=3)} - ' \
+                     f'{sigfig.round(consistency, sigfigs=3)} - ' \
+                     f'{sigfig.round(tonnage, sigfigs=3)}'
 
         self.view.text_item.setPlainText(output)
 
@@ -226,7 +220,7 @@ class Connection(Model):
     def backflow(self):
         ''' Returns the volume by which this Connection instance's 
             queue exceeds its capacity.'''
-        return min(0, self.capacity - self.queue.volume)
+        return min(0, self.capacity - self.queue.magnitude)
 
     def push(self):
         ''' Override this method to define a Connection subclass' push 
@@ -248,11 +242,11 @@ class InletConnection(Connection):
         transferred_flow = 0
         while (not self.queue.empty() 
                and transferred_flow 
-               + self.queue.peek().aggregate_volume() 
+               + self.queue.peek().aggregate_magnitude() 
                <= self.capacity):
             event = self.queue.dequeue()
             self.module.queue.enqueue(event)
-            transferred_flow += event.aggregate_volume()
+            transferred_flow += event.aggregate_magnitude()
      
         return transferred_flow
 
@@ -295,13 +289,13 @@ class PullInletConnection(InletConnection):
         self.stream.reset_flowrates()
         while (not self.mate.queue.empty() 
                and pulled_amount 
-               + self.mate.queue.peek().aggregate_volume() 
+               + self.mate.queue.peek().aggregate_magnitude() 
                <= self.capacity):
             event = self.mate.queue.dequeue()
             self.queue.enqueue(event)
-            pulled_amount += event.aggregate_volume()
+            pulled_amount += event.aggregate_magnitude()
             for species in event.registered_species:
-                self.stream.flowrates[species] += event.species_volume(species)
+                self.stream.flowrates[species] += event.species_magnitude(species)
 
 
 class OutletConnection(Connection):
@@ -343,8 +337,8 @@ class OutletConnection(Connection):
             event_share = self.module.initial_queue_length
         else:
             event_share = min(math.ceil(self.module.initial_queue_length 
-                                    * outflow 
-                                    / self.module.total_inlet_flow), self.module.queue.length())
+                                        * outflow 
+                                        / self.module.total_inlet_flow), self.module.queue.length())
 
         events_processed = 0
         transferred_flow = 0
@@ -352,7 +346,7 @@ class OutletConnection(Connection):
             event = self.module.queue.dequeue()
             for species in Event.registered_species:
                 species_event_volume = species_outflows[species] / event_share
-                event.set_species_volume(species, species_event_volume)
+                event.set_species_magnitude(species, species_event_volume)
                 transferred_flow += species_event_volume
 
             self.queue.enqueue(event)
@@ -380,13 +374,13 @@ class PushOutletConnection(OutletConnection):
         self.stream.reset_flowrates()
         while (not self.queue.empty() 
                and pushed_amount 
-               + self.queue.peek().aggregate_volume() 
+               + self.queue.peek().aggregate_magnitude() 
                <= self.capacity):  
             event = self.queue.dequeue()
             self.mate.queue.enqueue(event)
-            pushed_amount += event.aggregate_volume()
+            pushed_amount += event.aggregate_magnitude()
             for species in event.registered_species:
-                self.stream.flowrates[species] += event.species_volume(species)
+                self.stream.flowrates[species] += event.species_magnitude(species)
 
 class PullOutletConnection(OutletConnection):
     def __init__(self, gui, module, capacity=0, name='Outlet'):
@@ -470,7 +464,7 @@ class Module(Model):
             self.inlet_flows.append(inlet_flow)
 
         self.initial_queue_length = self.queue.length()
-        self.initial_species_volumes = self.queue.species_flows
+        self.initial_species_volumes = self.queue.species_magnitudes
 
     def process(self):
         ''' Override this method to define a Module subclass' behaviour.'''
@@ -533,6 +527,10 @@ class Source(Module):
             # Create events at outlet connection
             self.generate_flow(connection, generated_species)
             outlet_amount += volume
+
+    def set_capacity(self, capacity):
+        self._capacity = capacity
+        self.outlet_connections[0].capacity = capacity
 
 class Tank(Module):
     def __init__(self, gui, name='Tank', capacity=0, 
@@ -649,7 +647,7 @@ class Hydrocyclone(Module):
         accepts_flow_fractions = {}
         rejects_flow_fractions = {}
     
-        total_feed_flow = self.queue.volume 
+        total_feed_flow = self.queue.magnitude 
         feed_flows = {} 
         feed_mass_flows = {} 
         feed_liquids_flows = {} 
@@ -665,13 +663,13 @@ class Hydrocyclone(Module):
         # Separate liquids from solids and store volumes of each species.
         for species in Event.registered_species:
             try:
-                feed_flows[species] = self.queue.species_flows[species]
+                feed_flows[species] = self.queue.species_magnitudes[species]
                 feed_mass_flows[species] = (feed_flows[species] * species.properties['density'])
                 if species.properties['state'] == 'liquid':
-                    feed_liquids_flows[species] = self.queue.species_flows[species]
+                    feed_liquids_flows[species] = self.queue.species_magnitudes[species]
                     total_feed_liquids_flow += feed_liquids_flows[species]
                 elif species.properties['state'] == 'solid':
-                    feed_solids_flows[species] = self.queue.species_flows[species]
+                    feed_solids_flows[species] = self.queue.species_magnitudes[species]
                     rejects_mass_flows[species] = feed_mass_flows[species] * self.rrw
                     rejects_flows[species] = (rejects_mass_flows[species] / species.properties['density'])
                     total_rejects_solids_flow += rejects_flows[species]

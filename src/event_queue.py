@@ -26,13 +26,13 @@ class EventQueue:
         ''' Returns True if the queue is empty, False otherwise.'''
         return len(self.events) == 0
 
-    def events_per_volume(self, event_volume):
+    def events_per_magnitude(self, event_magnitude):
         ''' Returns the number of Events, starting at the front of the queue,
-            that contains, in aggregate, the volume specified by event_volume.
+            that contains, in aggregate, the magnitude specified by event_magnitude.
         '''
         i = 0
         for event in self.events:
-            event_volume -= event.aggregate_volume()
+            event_volume -= event.aggregate_magnitude()
             i += 1
             if event_volume <= 0:
                 return i
@@ -40,39 +40,20 @@ class EventQueue:
             return 0
 
     @property
-    def volume(self):
+    def magnitude(self):
         ''' Property. Returns the total volume of all Events in the 
             queue.'''
         res = 0
         for event in self.events:
-            res += event.aggregate_volume()
+            res += event.aggregate_magnitude()
         return res
 
     @property
-    def mass_flow(self):
-        ''' Property. Returns the total mass flow of all Events in the 
-            queue'''
-        res = 0
-        for event in self.events:
-            res += event.aggregate_mass()
-        return res
-
-    @property
-    def species_flows(self):
+    def species_magnitudes(self):
         ''' Property. Returns a dictionary mapping each registered Species to its 
-            corresponding aggregate volume in the queue.'''
+            corresponding aggregate magnitude in the queue.'''
         res = {species: 0 for species in Event.registered_species}
         for event in self.events:
             for species in Event.registered_species:
-                res[species] += event.species_volume(species)
-        return res
-
-    @property
-    def species_mass_flows(self):
-        ''' Property. Returns a dictionary mapping each registered Species to its 
-            corresponding aggregate mass flow in the queue.'''
-        res = {species: 0 for species in Event.registered_species}
-        for event in self.events:
-            for species in Event.registered_species:
-                res[species] += event.species_mass(species)
+                res[species] += event.species_magnitude(species)
         return res
