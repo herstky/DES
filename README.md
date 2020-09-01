@@ -7,9 +7,24 @@ difficult to obtain.
 
 The example shown in the demonstration below is that of a hydrocyclone system that is typical in pulp and paper mills. These systems are used to remove dirt, metal, and other debris from a pulp slurry in the papermaking process. 
 <h1>Demonstration</h1>
-This animation demonstrates how to create a single stage hydrocyclone system. The "source" module represents an upstream process which is outputting a certain amount of flow to the pump.The "tank" module is used to supply the difference in flow that exists between what the "source" module pushes forward and what the pump pulls. These two types of flow, push and pull, are represented by square and circle sockets, respectively. 
-
-<img src="https://github.com/herstky/DES/raw/master/demos/model_creation.gif" height="528" width="1000">
-<img src="https://github.com/herstky/DES/raw/master/demos/changing_settings.gif" height="528" width="1000">
-<img src="https://github.com/herstky/DES/raw/master/demos/hydrocyclone_cascade.gif" height="528" width="1000">
+This animation demonstrates how to create a single stage hydrocyclone system. The "source" module represents an upstream process which is outputting a certain amount of flow to the pump. The "tank" module is used to supply the difference in flow that exists between what the "source" module pushes forward and what the pump pulls. These two types of flow, push and pull, are represented by square and circle sockets, respectively. 
+<figure>
+    <img src="https://github.com/herstky/DES/raw/master/demos/model_creation.gif" height="528" width="1000">
+    <figcaption>Creating a single-stage hydrocyclone system</figcaption>
+</figure>
+<br>
+<br>
+<br>
+<figure>
+    <img src="https://github.com/herstky/DES/raw/master/demos/changing_settings.gif" height="528" width="1000">
+    <figcaption>Adjusting module settings while the simulation is running</figcaption>
+</figure>
+<br>
+<br>
+<br>
+<figure>
+    <img src="https://github.com/herstky/DES/raw/master/demos/hydrocyclone_cascade.gif" height="528" width="1000">
+    <figcaption>3-stage hydrocyclone cascade</figcaption>
+</figure>
+This is a 3-stage hydrocyclone cascade. Multistage systems such as this are used to reclaim some good fiber that would otherwise be rejected to the sewer. The simulation takes a moment to reach steady state for more complicated systems.
 
