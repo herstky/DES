@@ -9,7 +9,7 @@ The examples shown in the demonstration below feature a couple different configu
 <figure>
     <img src="https://github.com/herstky/DES/raw/master/demos/model_creation.gif" height="528" width="1000">
 </figure>
-This animation demonstrates how to create a single-stage hydrocyclone system. The "source" module represents an upstream process which is outputting a certain amount of flow to the pump. The "tank" module is used to supply the difference in flow that exists between what the "source" module pushes forward and what the pump pulls. These two types of flow, push and pull, are represented by square and circle sockets, respectively. 
+This animation demonstrates how to create a single-stage hydrocyclone system. The "source" module represents an upstream process which is outputting a certain amount of flow to the pump. The "tank" module is used to supply the difference in flow that exists between what the "source" module pushes forward and what the pump pulls. These two types of flow, push and pull, are represented by square and circle sockets, respectively. The numbers shown in the readouts are, in the order they appear, volumetric flowrate in cubic meters per minute, consistency (percent solids), and metric tons of solids produced per day. 
 <br>
 <br>
 <br>
