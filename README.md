@@ -13,10 +13,14 @@ This animation demonstrates how to create a single-stage hydrocyclone system. Th
 <br>
 <br>
 <br>
+<br>
+<br>
 <figure>
     <img src="https://github.com/herstky/DES/raw/master/demos/changing_settings.gif" height="528" width="1000">
 </figure>
 Module settings can be adjusted while the simulation is running to fine tune process variables.
+<br>
+<br>
 <br>
 <br>
 <br>
