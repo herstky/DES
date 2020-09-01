@@ -9,7 +9,7 @@ The example shown in the demonstration below is that of a hydrocyclone system th
 <h1>Demonstration</h1>
 This animation demonstrates how to create a single stage hydrocyclone system. The "source" module represents an upstream process which is outputting a certain amount of flow to the pump.The "tank" module is used to supply the difference in flow that exists between what the "source" module pushes forward and what the pump pulls. These two types of flow, push and pull, are represented by square and circle sockets, respectively. 
 
-<img src="https://github.com/herstky/DES/raw/master/demos/model_creation.gif" height="350" width="300">
-<img src="https://github.com/herstky/DES/raw/master/demos/changing_settings.gif" height="350" width="300">
-<img src="https://github.com/herstky/DES/raw/master/demos/hydrocyclone_cascade.gif" height="350" width="300">
+<img src="https://github.com/herstky/DES/raw/master/demos/model_creation.gif" height="350" width="663">
+<img src="https://github.com/herstky/DES/raw/master/demos/changing_settings.gif" height="350" width="663">
+<img src="https://github.com/herstky/DES/raw/master/demos/hydrocyclone_cascade.gif" height="350" width="663">
 
