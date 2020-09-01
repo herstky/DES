@@ -5,9 +5,9 @@ from enum import Enum
 
 from .event_queue import EventQueue
 from .event import Event
-from .views import (ReadoutView, StreamView, ConnectionView, SourceView, 
+from .views import (ReadoutView, StreamView, SocketView, SourceView, 
                     TankView, PumpView, SinkView, SplitterView, 
-                    HydrocycloneView, JoinerView, JoinerPumpView)
+                    HydrocycloneView, JoinerView, PumpView)
 from .dialogs import ModelDialog, PumpDialog, TankDialog, SourceDialog, HydrocycloneDialog
 from .species import Species
 
@@ -114,8 +114,8 @@ class FiberReadout(Readout):
 class Stream(Model):
     def __init__(self, gui, name='Stream'):
         super().__init__(gui, name)
-        self.inlet_connection = None
-        self.outlet_connection = None
+        self.inlet_socket = None
+        self.outlet_socket = None
         self.readout = None
         self.gui.simulation.streams.append(self)
         self.view = StreamView(self)
@@ -125,12 +125,12 @@ class Stream(Model):
         ''' Removes this Stream instance from any lists that may be 
             tracking it.'''
         try:
-            self.remove_connection(self.inlet_connection)
+            self.remove_socket(self.inlet_socket)
         except Exception:
             pass
 
         try:
-            self.remove_connection(self.outlet_connection)
+            self.remove_socket(self.outlet_socket)
         except Exception:
             pass
 
@@ -139,37 +139,37 @@ class Stream(Model):
         except Exception:
             pass
 
-    def add_connection(self, connection):
-        ''' Ensures connection is valid and assigns it to the 
-            appropriate connection attribute. Returns True if the 
-            connection is valid, otherwise returns False.'''
-        if isinstance(connection, InletConnection) and connection.connect(self):
-            self.outlet_connection = connection
+    def add_socket(self, socket):
+        ''' Ensures socket is valid and assigns it to the 
+            appropriate socket attribute. Returns True if the 
+            socket is valid, otherwise returns False.'''
+        if isinstance(socket, InletSocket) and socket.connect(self):
+            self.outlet_socket = socket
             return True
-        elif isinstance(connection, OutletConnection) and connection.connect(self):
-            self.inlet_connection = connection
+        elif isinstance(socket, OutletSocket) and socket.connect(self):
+            self.inlet_socket = socket
             return True
         return False
 
-    def remove_connection(self, connection):
-        ''' Removes the connection from this Stream instance. Returns 
+    def remove_socket(self, socket):
+        ''' Removes the socket from this Stream instance. Returns 
             True if successful, otherwise returns False.'''
-        if self.inlet_connection is connection:
-            self.inlet_connection.disconnect()
-            self.inlet_connection = None
+        if self.inlet_socket is socket:
+            self.inlet_socket.disconnect()
+            self.inlet_socket = None
             return True
-        elif self.outlet_connection is connection:
-            self.outlet_connection.disconnect()
-            self.outlet_connection = None
+        elif self.outlet_socket is socket:
+            self.outlet_socket.disconnect()
+            self.outlet_socket = None
             return True
         return False
         
-    def other_connection(self, connection):
-        ''' Returns the connection opposite to passed connection.'''
-        if self.inlet_connection is connection:
-            return self.outlet_connection
-        elif self.outlet_connection is connection:
-            return self.inlet_connection
+    def other_socket(self, socket):
+        ''' Returns the socket opposite to socket argument.'''
+        if self.inlet_socket is socket:
+            return self.outlet_socket
+        elif self.outlet_socket is socket:
+            return self.inlet_socket
         return None
 
     def reset_flowrates(self):
@@ -177,40 +177,40 @@ class Stream(Model):
         self.flowrates = {species: 0 for species in Event.registered_species}
 
 
-class Connection(Model):
-    def __init__(self, gui, module, capacity=float('inf'), name='Connection'): 
+class Socket(Model):
+    def __init__(self, gui, module, capacity=float('inf'), name='Socket'): 
         super().__init__(gui, name)
         self.module = module
         self.capacity = capacity
         self.queue = EventQueue()
         self.stream = None
-        self.view = ConnectionView(self)
+        self.view = SocketView(self)
 
     @property
     def mate(self):
-        ''' Property. Returns the connection at the other end of this 
-            Connection instance's stream.'''
+        ''' Property. Returns the Socket at the other end of this 
+            Socket instance's stream.'''
         if self.stream:
-            return self.stream.other_connection(self)
+            return self.stream.other_socket(self)
         else:
             return None
 
     def transfer_events(self):
         ''' This method must be overriden. Defines the behaviour of a 
-            Connection subclass when transferring Events to or from 
+            Socket subclass when transferring Events to or from 
             the connected Module. Must return the volume 
             transferred.'''
         raise NotImplementedError
 
     def connect(self, stream):
-        ''' Assigns a Stream to this Connection instance. Updates view 
+        ''' Assigns a Stream to this Socket instance. Updates view 
             to reflect connected state.'''
         self.stream = stream
         self.view.set_connected(True)
         return True 
 
     def disconnect(self):
-        ''' Removes this Connection instance's Stream. Updates view to
+        ''' Removes this Socket instance's Stream. Updates view to
             reflect disconnected state.'''
         self.stream = None
         self.view.set_connected(False)
@@ -218,26 +218,26 @@ class Connection(Model):
 
     @property
     def backflow(self):
-        ''' Returns the volume by which this Connection instance's 
+        ''' Returns the volume by which this Socket instance's 
             queue exceeds its capacity.'''
         return min(0, self.capacity - self.queue.magnitude)
 
     def push(self):
-        ''' Override this method to define a Connection subclass' push 
+        ''' Override this method to define a Socket subclass' push 
             flow behaviour'''
         pass
 
     def pull(self):
-        ''' Override this method to define a Connection subclass' pull 
+        ''' Override this method to define a Socket subclass' pull 
             flow behaviour'''
         pass
 
-class InletConnection(Connection):
+class InletSocket(Socket):
     def __init__(self, gui, module, capacity=float('inf'), name='Inlet'):
         super().__init__(gui, module, capacity, name)
 
     def transfer_events(self):
-        ''' Transfers Events from this Connection instance to its 
+        ''' Transfers Events from this Socket instance to its 
             Module.'''
         transferred_flow = 0
         while (not self.queue.empty() 
@@ -251,39 +251,39 @@ class InletConnection(Connection):
         return transferred_flow
 
 
-class PushInletConnection(InletConnection):
+class PushInletSocket(InletSocket):
     def __init__(self, gui, module, capacity=float('inf'), name='Inlet'):
         super().__init__(gui, module, capacity, name)
  
     def connect(self, stream):
-        ''' Checks stream for conflicting Connection. If none are 
+        ''' Checks stream for conflicting Socket. If none are 
             found, calls parent class' connect method and returns 
             True, otherwise returns False.'''
-        if (stream.outlet_connection 
-            or stream.inlet_connection 
-            and not isinstance(stream.inlet_connection, PushOutletConnection)):
+        if (stream.outlet_socket
+            or stream.inlet_socket
+            and not isinstance(stream.inlet_socket, PushOutletSocket)):
             return False
         return super().connect(stream)
 
-class PullInletConnection(InletConnection):
+class PullInletSocket(InletSocket):
     def __init__(self, gui, module, capacity=0, name='Inlet'):
         super().__init__(gui, module, capacity, name)
 
     def connect(self, stream):
-        ''' Checks stream for conflicting Connection. If none are 
-            found, sets stream's inlet Connection equal to this Connection 
+        ''' Checks stream for conflicting Socket. If none are 
+            found, sets stream's inlet Socket equal to this Socket 
             instance's capacity, calls parent class' connect method and 
             returns True, otherwise returns False.'''
-        if (stream.outlet_connection 
-            or stream.inlet_connection 
-            and not isinstance(stream.inlet_connection, PullOutletConnection)):
+        if (stream.outlet_socket
+            or stream.inlet_socket
+            and not isinstance(stream.inlet_socket, PullOutletSocket)):
             return False
-        if stream.inlet_connection:
-            stream.inlet_connection.capacity = self.capacity
+        if stream.inlet_socket:
+            stream.inlet_socket.capacity = self.capacity
         return super().connect(stream)
 
     def pull(self):
-        ''' Pulls Events from the connected Stream's other Connection.'''
+        ''' Pulls Events from the connected Stream's other Socket.'''
         pulled_amount = 0
         self.mate.capacity = self.capacity
         self.stream.reset_flowrates()
@@ -298,29 +298,29 @@ class PullInletConnection(InletConnection):
                 self.stream.flowrates[species] += event.species_magnitude(species)
 
 
-class OutletConnection(Connection):
+class OutletSocket(Socket):
     def __init__(self, gui, module, capacity=float('inf'), name='Outlet'):
         super().__init__(gui, module, capacity, name)
         
         # dict that specifies the fraction of the connected Module's 
-        # volumetric feed flow that goes to this OutletConnection for each 
+        # volumetric feed flow that goes to this OutletSocket for each 
         # species.
         self.flow_fractions = None 
 
     def set_flow_fractions(self, flow_fractions):
-        ''' Assigns flow_fractions to this OutletConnection instance's 
+        ''' Assigns flow_fractions to this OutletSocket instance's 
             flow_fractions dict'''
         self.flow_fractions = flow_fractions
 
     def transfer_events(self):
-        ''' Transfers Events from this OutletConnection instance's connected
-            module to this OutletConnection instance's queue.'''
+        ''' Transfers Events from this OutletSocket instance's connected
+            module to this OutletSocket instance's queue.'''
         # If flow fractions to each outlet are not specified, split the flows
         # to the outlets evenly.
         if not self.flow_fractions:
             self.flow_fractions = {}
             for species in Event.registered_species:
-                self.flow_fractions[species] = 1 / len(self.module.outlet_connections)
+                self.flow_fractions[species] = 1 / len(self.module.outlet_sockets)
         
         # Calculate this outlet's share of each species' flow.
         species_outflows = {species: 0 for species in Event.registered_species}
@@ -354,22 +354,22 @@ class OutletConnection(Connection):
         
         return transferred_flow
 
-class PushOutletConnection(OutletConnection):
+class PushOutletSocket(OutletSocket):
     def __init__(self, gui, module, capacity=float('inf'), name='Outlet'):
         super().__init__(gui, module, capacity, name)
 
     def connect(self, stream):
-        ''' Checks stream for conflicting Connection. If none are 
+        ''' Checks stream for conflicting Socket. If none are 
             found, calls parent class' connect method and returns 
             True, otherwise returns False.'''
-        if (stream.inlet_connection 
-            or stream.outlet_connection 
-            and not isinstance(stream.outlet_connection, PushInletConnection)):
+        if (stream.inlet_socket 
+            or stream.outlet_socket 
+            and not isinstance(stream.outlet_socket, PushInletSocket)):
             return False
         return super().connect(stream)
 
     def push(self):
-        ''' Pushes Events to the connected Stream's other Connection.'''
+        ''' Pushes Events to the connected Stream's other Socket.'''
         pushed_amount = 0
         self.stream.reset_flowrates()
         while (not self.queue.empty() 
@@ -382,21 +382,21 @@ class PushOutletConnection(OutletConnection):
             for species in event.registered_species:
                 self.stream.flowrates[species] += event.species_magnitude(species)
 
-class PullOutletConnection(OutletConnection):
+class PullOutletSocket(OutletSocket):
     def __init__(self, gui, module, capacity=0, name='Outlet'):
         super().__init__(gui, module, capacity, name)
 
     def connect(self, stream):
-        ''' Checks stream for conflicting Connection. If none are 
-            found, sets stream's outlet Connection equal to this Connection 
+        ''' Checks stream for conflicting Socket. If none are 
+            found, sets stream's outlet Socket equal to this Socket 
             instance's capacity, calls parent class' connect method and 
             returns True, otherwise returns False.'''
-        if (stream.inlet_connection 
-            or stream.outlet_connection 
-            and not isinstance(stream.outlet_connection, PullInletConnection)):
+        if (stream.inlet_socket 
+            or stream.outlet_socket 
+            and not isinstance(stream.outlet_socket, PullInletSocket)):
             return False
-        if stream.outlet_connection:
-            self.capacity = stream.outlet_connection.capacity
+        if stream.outlet_socket:
+            self.capacity = stream.outlet_socket.capacity
         return super().connect(stream)
 
 
@@ -405,9 +405,9 @@ class Module(Model):
         super().__init__(gui, name)    
         self._capacity = 0    
         self.gui.simulation.modules.append(self)
-        self.inlet_connections = []
+        self.inlet_sockets = []
         self.inlet_flows = []
-        self.outlet_connections = []
+        self.outlet_sockets = []
         self.outlet_flows = []
         self.queue = EventQueue()
 
@@ -420,10 +420,10 @@ class Module(Model):
     def set_capacity(self, capacity):
         self._capacity = capacity
 
-    def generate_flow(self, connection, species_flows):
+    def generate_flow(self, socket, species_flows):
         ''' Instantiates an Event as specified by species_flows dict and 
-            enqueues it to connection's queue.'''
-        connection.queue.enqueue(Event(species_flows))
+            enqueues it to socket's queue.'''
+        socket.queue.enqueue(Event(species_flows))
 
 
     def purge_flow(self):
@@ -431,15 +431,15 @@ class Module(Model):
             from the Simulation.'''
         self.queue.events.clear()
 
-    def add_inlet_connection(self, connection):
-        ''' Adds connection to the end of this Module instance's 
-            inlet_connections list.'''
-        self.inlet_connections.append(connection)
+    def add_inlet_socket(self, socket):
+        ''' Adds socket to the end of this Module instance's 
+            inlet_sockets list.'''
+        self.inlet_sockets.append(socket)
 
-    def add_outlet_connection(self, connection):
-        ''' Adds connection to the end of this Module instance's 
-            outlet_connections list.'''
-        self.outlet_connections.append(connection)
+    def add_outlet_socket(self, socket):
+        ''' Adds socket to the end of this Module instance's 
+            outlet_sockets list.'''
+        self.outlet_sockets.append(socket)
 
     @property
     def total_inlet_flow(self):
@@ -456,11 +456,11 @@ class Module(Model):
             in preparation for the current iteration.'''
         self.inlet_flows.clear()
 
-        for inlet_connection in self.inlet_connections:
-            inlet_connection.pull()
+        for inlet_socket in self.inlet_sockets:
+            inlet_socket.pull()
 
-        for inlet_connection in self.inlet_connections:
-            inlet_flow = inlet_connection.transfer_events()
+        for inlet_socket in self.inlet_sockets:
+            inlet_flow = inlet_socket.transfer_events()
             self.inlet_flows.append(inlet_flow)
 
         self.initial_queue_length = self.queue.length()
@@ -475,12 +475,12 @@ class Module(Model):
             following the current iteration.'''
         self.outlet_flows.clear()
 
-        for outlet_connection in self.outlet_connections:
-            outlet_flow = outlet_connection.transfer_events()
+        for outlet_socket in self.outlet_sockets:
+            outlet_flow = outlet_socket.transfer_events()
             self.outlet_flows.append(outlet_flow)
 
-        for outlet_connection in self.outlet_connections:
-            outlet_connection.push()
+        for outlet_socket in self.outlet_sockets:
+            outlet_socket.push()
 
         del self.initial_queue_length
         del self.initial_species_volumes
@@ -498,7 +498,7 @@ class Source(Module):
     def __init__(self, gui, name='Source', capacity=10000, 
                  volumetric_fractions=None, event_rate=1000):
         super().__init__(gui, name)
-        self.add_outlet_connection(PushOutletConnection(self.gui, self, capacity))
+        self.add_outlet_socket(PushOutletSocket(self.gui, self, capacity))
         self.set_capacity(capacity)
         self.volumetric_fractions = volumetric_fractions
         self.event_rate = event_rate
@@ -510,10 +510,10 @@ class Source(Module):
             volumetric_fractions dict or generates an equal split of all 
             Species registered to the Event class if volumetric_fractions is
             not provided.'''
-        connection = self.outlet_connections[0]
+        socket = self.outlet_sockets[0]
         outlet_amount = 0
         for i in range(self.event_rate):
-            volume = connection.capacity / self.event_rate
+            volume = socket.capacity / self.event_rate
             generated_species = []
             if self.volumetric_fractions:
                 for species in Event.registered_species:
@@ -524,19 +524,19 @@ class Source(Module):
                     fraction = 1 / len(Event.registered_species)
                     generated_species.append((species, fraction * volume))
 
-            # Create events at outlet connection
-            self.generate_flow(connection, generated_species)
+            # Create events at outlet socket
+            self.generate_flow(socket, generated_species)
             outlet_amount += volume
 
     def set_capacity(self, capacity):
         self._capacity = capacity
-        self.outlet_connections[0].capacity = capacity
+        self.outlet_sockets[0].capacity = capacity
 
 class Tank(Module):
     def __init__(self, gui, name='Tank', capacity=0, 
                  volumetric_fractions=None, event_rate=1000):
         super().__init__(gui, name)
-        self.add_outlet_connection(PullOutletConnection(self.gui, self, capacity))
+        self.add_outlet_socket(PullOutletSocket(self.gui, self, capacity))
         self.volumetric_fractions = volumetric_fractions
         self.event_rate = event_rate
         self.view = TankView(self)
@@ -547,9 +547,9 @@ class Tank(Module):
             volumetric_fractions dict or generates an equal split of all 
             Species registered to the Event class if volumetric_fractions is
             not provided.'''
-        connection = self.outlet_connections[0]
+        socket = self.outlet_sockets[0]
         outlet_amount = 0
-        flow_demand = connection.capacity
+        flow_demand = socket.capacity
         for i in range(self.event_rate):
             volume = flow_demand / self.event_rate
             generated_species = []
@@ -562,35 +562,15 @@ class Tank(Module):
                     fraction = 1 / len(Event.registered_species)
                     generated_species.append((species, fraction * volume))
         
-            # Create events at outlet connection
-            self.generate_flow(connection, generated_species)
+            # Create events at outlet socket
+            self.generate_flow(socket, generated_species)
             outlet_amount += volume
 
-        
-class Pump(Module): 
-    def __init__(self, gui, name='Pump', capacity=5000):
-        super().__init__(gui, name)
-        self.add_inlet_connection(PullInletConnection(self.gui, self, capacity))
-        self.add_outlet_connection(PushOutletConnection(self.gui, self))
-        self.set_capacity(capacity)
-        self.view = PumpView(self)
-        self.dialog_class = PumpDialog
-
-    def process(self):
-        ''' Passively allows for the inlet and outlet Connections to handle 
-            flow through this Pump instance.'''
-        pass
-
-    def set_capacity(self, capacity):
-        self.inlet_connections[0].capacity = capacity
-
-    def capacity(self):
-        return self.inlet_connections[0].capacity
 
 class Sink(Module):
     def __init__(self, gui, name='Sink', capacity=float('inf')):
         super().__init__(gui, name)
-        self.add_inlet_connection(PushInletConnection(self.gui, self, capacity))
+        self.add_inlet_socket(PushInletSocket(self.gui, self, capacity))
         self.set_capacity(capacity)
         self.view = SinkView(self)
 
@@ -603,9 +583,9 @@ class Splitter(Module):
     def __init__(self, gui, name='Splitter', capacity=float('inf'), split_fraction=.25):
         super().__init__(gui, name)
         self.split_fraction = split_fraction
-        self.add_inlet_connection(PushInletConnection(self.gui, self, capacity))
-        self.add_outlet_connection(PushOutletConnection(self.gui, self, name='Outlet1'))
-        self.add_outlet_connection(PushOutletConnection(self.gui, self, name='Outlet2'))
+        self.add_inlet_socket(PushInletSocket(self.gui, self, capacity))
+        self.add_outlet_socket(PushOutletSocket(self.gui, self, name='Outlet1'))
+        self.add_outlet_socket(PushOutletSocket(self.gui, self, name='Outlet2'))
         self.set_capacity(capacity)
         self.view = SplitterView(self)
 
@@ -613,8 +593,8 @@ class Splitter(Module):
         ''' Splits flow to this Splitter instance evenly across all Species 
             registered to the Event class, between its two outlets in the 
             proportion specified by the split_fraction.'''
-        inlet_connection = self.inlet_connections[0]
-        outlet_connection1, outlet_connection2 = self.outlet_connections
+        inlet_socket = self.inlet_sockets[0]
+        outlet_socket1, outlet_socket2 = self.outlet_sockets
 
         outlet1_flow_fractions = {}
         outlet2_flow_fractions = {}
@@ -623,8 +603,8 @@ class Splitter(Module):
             outlet1_flow_fractions[species] = self.split_fraction
             outlet2_flow_fractions[species] = (1 - self.split_fraction)
 
-        outlet_connection1.set_flow_fractions(outlet1_flow_fractions)
-        outlet_connection2.set_flow_fractions(outlet2_flow_fractions)
+        outlet_socket1.set_flow_fractions(outlet1_flow_fractions)
+        outlet_socket2.set_flow_fractions(outlet2_flow_fractions)
 
 
 class Hydrocyclone(Module):
@@ -632,18 +612,18 @@ class Hydrocyclone(Module):
         super().__init__(gui, name)
         self.rrv = rrv # Reject rate by volume
         self.rrw = rrw # Reject rate by weight (solids only)
-        self.add_inlet_connection(PushInletConnection(self.gui, self, capacity, name='Feed'))
-        self.add_outlet_connection(PushOutletConnection(self.gui, self, name='Accepts'))
-        self.add_outlet_connection(PushOutletConnection(self.gui, self, name='Rejects'))
+        self.add_inlet_socket(PushInletSocket(self.gui, self, capacity, name='Feed'))
+        self.add_outlet_socket(PushOutletSocket(self.gui, self, name='Accepts'))
+        self.add_outlet_socket(PushOutletSocket(self.gui, self, name='Rejects'))
         self.set_capacity(capacity)
         self.view = HydrocycloneView(self)
         self.dialog_class = HydrocycloneDialog
 
     def process(self):
-        ''' Splits the flow to this Hydrocyclone instance's inlet connection 
-            between its accepts and rejects Connections as specified by its 
+        ''' Splits the flow to this Hydrocyclone instance's inlet socket 
+            between its accepts and rejects Sockets as specified by its 
             rrv and rrw.'''
-        accepts_connection, rejects_connection = self.outlet_connections
+        accepts_socket, rejects_socket = self.outlet_sockets
         accepts_flow_fractions = {}
         rejects_flow_fractions = {}
     
@@ -699,36 +679,36 @@ class Hydrocyclone(Module):
             rejects_flow_fractions[species] = rejects_fraction
             accepts_flow_fractions[species] = accepts_fraction
         
-        accepts_connection.set_flow_fractions(accepts_flow_fractions)
-        rejects_connection.set_flow_fractions(rejects_flow_fractions)
+        accepts_socket.set_flow_fractions(accepts_flow_fractions)
+        rejects_socket.set_flow_fractions(rejects_flow_fractions)
 
 
 class Joiner(Module):
     def __init__(self, gui, name='Joiner', 
                  inlet_capacity1=float('inf'), inlet_capacity2=float('inf')):
         super().__init__(gui, name)
-        self.add_inlet_connection(PushInletConnection(self.gui, self, inlet_capacity1, 'Inlet1'))
-        self.add_inlet_connection(PushInletConnection(self.gui, self, inlet_capacity2, 'Inlet2'))
-        self.add_outlet_connection(PushOutletConnection(self.gui, self, inlet_capacity1 + inlet_capacity2, 'Outlet'))
+        self.add_inlet_socket(PushInletSocket(self.gui, self, inlet_capacity1, 'Inlet1'))
+        self.add_inlet_socket(PushInletSocket(self.gui, self, inlet_capacity2, 'Inlet2'))
+        self.add_outlet_socket(PushOutletSocket(self.gui, self, inlet_capacity1 + inlet_capacity2, 'Outlet'))
         self.set_capacity(inlet_capacity1 + inlet_capacity2)
         self.view = JoinerView(self)
 
     def process(self):
         ''' Passively joins the flow from this Joiner instance's two inlet 
-            Connections and pushes it to its outlet Connection.'''
+            Sockets and pushes it to its outlet Socket.'''
         pass
 
-class JoinerPump(Module):
+class Pump(Module):
     def __init__(self, gui, name='Pump', capacity=5000):
         super().__init__(gui, name)
-        self.add_inlet_connection(PushInletConnection(self.gui, self, capacity, 'Inlet1'))
-        self.add_inlet_connection(PullInletConnection(self.gui, self, 0, 'Inlet2'))
-        self.add_outlet_connection(PushOutletConnection(self.gui, self, float('inf'), 'Outlet'))
+        self.add_inlet_socket(PushInletSocket(self.gui, self, capacity, 'Inlet1'))
+        self.add_inlet_socket(PullInletSocket(self.gui, self, 0, 'Inlet2'))
+        self.add_outlet_socket(PushOutletSocket(self.gui, self, float('inf'), 'Outlet'))
         self.set_capacity(capacity)
-        self.view = JoinerPumpView(self)
+        self.view = PumpView(self)
         self.dialog_class = PumpDialog
 
     def process(self):
-        push_inlet_connection, pull_inlet_connection = self.inlet_connections
+        push_inlet_socket, pull_inlet_socket = self.inlet_sockets
         pushed_inlet_flow = self.inlet_flows[0]
-        pull_inlet_connection.capacity = self.capacity() - pushed_inlet_flow
+        pull_inlet_socket.capacity = self.capacity() - pushed_inlet_flow

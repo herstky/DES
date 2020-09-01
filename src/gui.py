@@ -6,7 +6,7 @@ from PyQt5.QtCore import QTimer, pyqtSlot, QEvent, Qt, QLineF, QPoint, QPointF, 
 
 from .simulation import Simulation
 from .main_window import Ui_MainWindow
-from .models import Source, Tank, Pump, Sink, Stream, Connection, Splitter, Hydrocyclone, Joiner, JoinerPump, Readout, FiberReadout
+from .models import Source, Tank, Pump, Sink, Stream, Socket, Splitter, Hydrocyclone, Joiner, Pump, Readout, FiberReadout
 from .event import Event
 from .views import StreamView, ReadoutView
 
@@ -61,7 +61,6 @@ class ApplicationWindow(QMainWindow):
         self.ui.actionSplitter.triggered.connect(self.create_splitter_slot)
         self.ui.actionHydrocyclone.triggered.connect(self.create_hydrocyclone_slot)
         self.ui.actionJoiner.triggered.connect(self.create_joiner_slot)
-        self.ui.actionJoinerPump.triggered.connect(self.create_joiner_pump_slot)
         self.ui.actionReadout.triggered.connect(self.create_readout)
         self.ui.actionFiberReadout.triggered.connect(self.create_fiber_readout)
 
@@ -225,10 +224,6 @@ class ApplicationWindow(QMainWindow):
     @pyqtSlot()
     def create_joiner_slot(self):
         self.add_module(Joiner(self))
-
-    @pyqtSlot()
-    def create_joiner_pump_slot(self):
-        self.add_module(JoinerPump(self))
             
     def add_module(self, module):
         self.state = self.placing_module
@@ -242,7 +237,7 @@ class ApplicationWindow(QMainWindow):
         self.state = self.idle
         self.floating_model = None
 
-    def connection_clicked(self, graphics_item, event):
+    def socket_clicked(self, graphics_item, event):
         scene_pos = graphics_item.mapToScene(event.pos())
         if self.state == ApplicationWindow.idle:
             self.create_stream(scene_pos)
@@ -257,8 +252,8 @@ class ApplicationWindow(QMainWindow):
         self.floating_line.setZValue(-1)
         for colliding_item in self.scene.collidingItems(self.floating_line):
             for view in self.views:
-                if isinstance(view.model, Connection) and view.graphics_item is colliding_item:
-                    self.floating_model.add_connection(view.model)
+                if isinstance(view.model, Socket) and view.graphics_item is colliding_item:
+                    self.floating_model.add_socket(view.model)
                     self.state = self.drawing_stream
                     width = colliding_item.boundingRect().width()
                     height = colliding_item.boundingRect().height()
@@ -282,8 +277,8 @@ class ApplicationWindow(QMainWindow):
         completed = False
         for colliding_item in self.scene.collidingItems(test_line_item):
             for view in self.views:
-                if isinstance(view.model, Connection) and view.graphics_item is colliding_item:             
-                    if not self.floating_model.add_connection(view.model):
+                if isinstance(view.model, Socket) and view.graphics_item is colliding_item:             
+                    if not self.floating_model.add_socket(view.model):
                         continue
 
                     p1 = QPointF(colliding_item.scenePos().x() + colliding_item.boundingRect().width() / 2 - 1, 
@@ -300,15 +295,11 @@ class ApplicationWindow(QMainWindow):
 
         self.scene.removeItem(test_line_item)
 
-        # If second connection to stream was not succesfully added
+        # If second socket to stream was not succesfully added
         if not completed:
             self.state = ApplicationWindow.idle
 
-            # Remove initial connection made
-            # if self.floating_model.inlet_connection:
-            #     self.floating_model.remove_connection(self.floating_model.inlet_connection)
-            # elif self.floating_model.outlet_connection:
-            #     self.floating_model.remove_connection(self.floating_model.outlet_connection)
+            # Remove initial socket made
             self.floating_model.cleanup()
             self.remove_floating_objects()
     

@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsRectItem, QGraphicsTex
 from PyQt5.QtCore import Qt, QPoint, QRectF, QLineF, QPointF
 
 import src.models as models
-from src.graphics_module_items import GraphicsModuleItem, GraphicsPushConnectionItem, GraphicsPullConnectionItem
+from src.graphics_module_items import GraphicsModuleItem, GraphicsPushSocketItem, GraphicsPullSocketItem
 
 
 class View:
@@ -253,58 +253,58 @@ class StreamView(View):
             return False
 
 
-class ConnectionView(View):
+class SocketView(View):
     def __init__(self, model):
         super().__init__(model)
-        if isinstance(self.model, models.PushInletConnection):
-            self.graphics_item = GraphicsPushConnectionItem(model, 0, 0, 15, 15)
+        if isinstance(self.model, models.PushInletSocket):
+            self.graphics_item = GraphicsPushSocketItem(model, 0, 0, 15, 15)
             self.graphics_item.setBrush(Qt.black)
 
             inner_rect_item = QGraphicsRectItem(1, 1, 13, 13, self.graphics_item)
             inner_rect_item.setBrush(Qt.white)
 
-            self.connection_marker_item = QGraphicsRectItem(4, 4, 7, 7, inner_rect_item)
-            self.connection_marker_item.setBrush(Qt.red)
-            self.connection_marker_item.setOpacity(0.3)
-        elif isinstance(self.model, models.PushOutletConnection):
-            self.graphics_item = GraphicsPushConnectionItem(model, 0, 0, 15, 15)
+            self.socket_marker_item = QGraphicsRectItem(4, 4, 7, 7, inner_rect_item)
+            self.socket_marker_item.setBrush(Qt.red)
+            self.socket_marker_item.setOpacity(0.3)
+        elif isinstance(self.model, models.PushOutletSocket):
+            self.graphics_item = GraphicsPushSocketItem(model, 0, 0, 15, 15)
             self.graphics_item.setBrush(Qt.black)
 
             inner_rect_item = QGraphicsRectItem(2, 2, 11, 11, self.graphics_item)
             inner_rect_item.setBrush(Qt.white)
 
-            self.connection_marker_item = QGraphicsRectItem(4, 4, 7, 7, inner_rect_item)
-            self.connection_marker_item.setBrush(Qt.red)
-            self.connection_marker_item.setOpacity(0.3)
-        elif isinstance(self.model, models.PullInletConnection):
-            self.graphics_item = GraphicsPullConnectionItem(model, 0, 0, 15, 15)
+            self.socket_marker_item = QGraphicsRectItem(4, 4, 7, 7, inner_rect_item)
+            self.socket_marker_item.setBrush(Qt.red)
+            self.socket_marker_item.setOpacity(0.3)
+        elif isinstance(self.model, models.PullInletSocket):
+            self.graphics_item = GraphicsPullSocketItem(model, 0, 0, 15, 15)
             self.graphics_item.setBrush(Qt.black)
 
             inner_circle_item = QGraphicsEllipseItem(1, 1, 13, 13, self.graphics_item)
             inner_circle_item.setBrush(Qt.white)
 
-            self.connection_marker_item = QGraphicsEllipseItem(4, 4, 7, 7, inner_circle_item)
-            self.connection_marker_item.setBrush(Qt.red)
-            self.connection_marker_item.setOpacity(0.3)
-        elif isinstance(self.model, models.PullOutletConnection):
-            self.graphics_item = GraphicsPullConnectionItem(model, 0, 0, 15, 15)
+            self.socket_marker_item = QGraphicsEllipseItem(4, 4, 7, 7, inner_circle_item)
+            self.socket_marker_item.setBrush(Qt.red)
+            self.socket_marker_item.setOpacity(0.3)
+        elif isinstance(self.model, models.PullOutletSocket):
+            self.graphics_item = GraphicsPullSocketItem(model, 0, 0, 15, 15)
             self.graphics_item.setBrush(Qt.black)
 
             inner_circle_item = QGraphicsEllipseItem(2, 2, 11, 11, self.graphics_item)
             inner_circle_item.setBrush(Qt.white)
 
-            self.connection_marker_item = QGraphicsEllipseItem(4, 4, 7, 7, inner_circle_item)
-            self.connection_marker_item.setBrush(Qt.red)
-            self.connection_marker_item.setOpacity(0.3)
+            self.socket_marker_item = QGraphicsEllipseItem(4, 4, 7, 7, inner_circle_item)
+            self.socket_marker_item.setBrush(Qt.red)
+            self.socket_marker_item.setOpacity(0.3)
 
     def set_pos(self, pos):
         self.graphics_item.setPos(pos)
 
     def set_connected(self, connected):
         if connected:
-            self.connection_marker_item.setBrush(Qt.green)
+            self.socket_marker_item.setBrush(Qt.green)
         else:
-            self.connection_marker_item.setBrush(Qt.red)
+            self.socket_marker_item.setBrush(Qt.red)
 
 class ModuleView(View):
     def __init__(self, model, image_path):
@@ -312,10 +312,10 @@ class ModuleView(View):
 
     def add_to_scene(self, scene):
         super().add_to_scene(scene)
-        self.set_connections()
+        self.set_sockets()
         return self.graphics_item
 
-    def set_connections(self):
+    def set_sockets(self):
         raise NotImplementedError
 
 
@@ -323,110 +323,97 @@ class SourceView(ModuleView):
     def __init__(self, model):
         super().__init__(model, 'assets/source.png')
 
-    def set_connections(self):
-        connection = self.model.outlet_connections[0]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(85, 90))
+    def set_sockets(self):
+        socket = self.model.outlet_sockets[0]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(85, 90))
 
 
 class TankView(ModuleView):
     def __init__(self, model):
         super().__init__(model, 'assets/tank.png')
 
-    def set_connections(self):
-        connection = self.model.outlet_connections[0]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(85, 90))
+    def set_sockets(self):
+        socket = self.model.outlet_sockets[0]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(85, 90))
 
-
-class PumpView(ModuleView):
-    def __init__(self, model):
-        super().__init__(model, 'assets/pump.png')
-
-    def set_connections(self):
-        connection = self.model.inlet_connections[0]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(-5, -5))
-
-        connection = self.model.outlet_connections[0]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(37, -5))
 
 class SinkView(ModuleView):
     def __init__(self, model):
         super().__init__(model, 'assets/sink.png')
 
-    def set_connections(self):
-        connection = self.model.inlet_connections[0]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(-6, 8))
+    def set_sockets(self):
+        socket = self.model.inlet_sockets[0]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(-6, 8))
 
 
 class SplitterView(ModuleView):
     def __init__(self, model):
         super().__init__(model, 'assets/splitter.png')
 
-    def set_connections(self):
-        connection = self.model.inlet_connections[0]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(-9, 21))
+    def set_sockets(self):
+        socket = self.model.inlet_sockets[0]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(-9, 21))
 
-        connection = self.model.outlet_connections[0]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(20, -7))
+        socket = self.model.outlet_sockets[0]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(20, -7))
 
-        connection = self.model.outlet_connections[1]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(20, 48))
+        socket = self.model.outlet_sockets[1]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(20, 48))
 
 
 class HydrocycloneView(ModuleView):
     def __init__(self, model):
         super().__init__(model, 'assets/hydrocyclone.png')
 
-    def set_connections(self):
-        connection = self.model.inlet_connections[0]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(-8, 18))
+    def set_sockets(self):
+        socket = self.model.inlet_sockets[0]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(-8, 18))
 
-        connection = self.model.outlet_connections[0]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(26, -6))
+        socket = self.model.outlet_sockets[0]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(26, -6))
 
-        connection = self.model.outlet_connections[1]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(26, 120))
+        socket = self.model.outlet_sockets[1]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(26, 120))
 
 class JoinerView(ModuleView):
     def __init__(self, model):
         super().__init__(model, 'assets/joiner.png')
 
-    def set_connections(self):
-        connection = self.model.inlet_connections[0]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(-7, 20))
+    def set_sockets(self):
+        socket = self.model.inlet_sockets[0]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(-7, 20))
 
-        connection = self.model.inlet_connections[1]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(21, -8))
+        socket = self.model.inlet_sockets[1]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(21, -8))
 
-        connection = self.model.outlet_connections[0]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(49, 20))
+        socket = self.model.outlet_sockets[0]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(49, 20))
 
-class JoinerPumpView(ModuleView):
+class PumpView(ModuleView):
     def __init__(self, model):
         super().__init__(model, 'assets/pump.png')
 
-    def set_connections(self):
-        connection = self.model.inlet_connections[0]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(-6, 16))
+    def set_sockets(self):
+        socket = self.model.inlet_sockets[0]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(-6, 16))
 
-        connection = self.model.inlet_connections[1]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(5, 38))
+        socket = self.model.inlet_sockets[1]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(5, 38))
 
-        connection = self.model.outlet_connections[0]
-        connection.view.graphics_item.setParentItem(self.graphics_item)
-        connection.view.set_pos(QPoint(76, 2))
+        socket = self.model.outlet_sockets[0]
+        socket.view.graphics_item.setParentItem(self.graphics_item)
+        socket.view.set_pos(QPoint(76, 2))

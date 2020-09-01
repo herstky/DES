@@ -10,18 +10,18 @@ class GraphicsModuleItem(QGraphicsPixmapItem):
         self.model.dialog = self.model.dialog_class(self.model)
         self.model.dialog.show()
 
-class GraphicsPushConnectionItem(QGraphicsRectItem):
+class GraphicsPushSocketItem(QGraphicsRectItem):
     def __init__(self, model, x, y, width, height):
         super().__init__(x, y, width, height)
         self.model = model
 
     def mousePressEvent(self, event):
-        self.model.gui.connection_clicked(self, event)
+        self.model.gui.socket_clicked(self, event)
 
-class GraphicsPullConnectionItem(QGraphicsEllipseItem):
+class GraphicsPullSocketItem(QGraphicsEllipseItem):
     def __init__(self, model, x, y, width, height):
         super().__init__(x, y, width, height)
         self.model = model
 
     def mousePressEvent(self, event):
-        self.model.gui.connection_clicked(self, event)
+        self.model.gui.socket_clicked(self, event)
