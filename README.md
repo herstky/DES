@@ -1,11 +1,9 @@
 <h1>Overview</h1>
 This program is a discrete event simulation that was written with the primary focus of modeling continuous industrial chemical processes. The program is general and can be modified to fit a wide variety of processes by scripting custom modules for use 
-in the simulation. Modules can then be dynamically added to and configured within the simulation to match the system that is 
-being proposed or exists in the real world. A few example use cases for this simulation are sizing proposed industrial 
-systems and using readily available information from an existing system to determine information that would be otherwise 
-difficult to obtain. 
+in the simulation. Modules can then be dynamically added to and configured within the simulation to match a system that is 
+being proposed to a client or exists in the real world. Example use cases for this simulation include, but are not limited to, sizing proposed industrial systems and using readily available information from an existing system to determine process parameters that would be otherwise difficult to obtain. 
 
-The example shown in the demonstration below is that of a hydrocyclone system that is typical in pulp and paper mills. These systems are used to remove dirt, metal, and other debris from a pulp slurry in the papermaking process. 
+The examples shown in the demonstration below feature a couple different configurations of hydrocyclone systems that are typical in pulp and paper mills. These systems are used in the papermaking process to remove dirt, metal, and other debris from a wood pulp slurry. 
 <h1>Demonstration</h1>
 <br>
 <figure>
